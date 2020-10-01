@@ -215,25 +215,35 @@ def create_installer(log_level=logging.INFO, log_file=None):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dir_path)
     app_name = "ReportGenerator_"+rev_hash
+    output_dir = "../build/output"
     run_cmd("pyinstaller", "--name", app_name, "--noconfirm", "--onefile", "--console", "report_generator.py", "--log-level", "WARN",
-            "--clean", "--workpath", "../build/tmp", "--distpath", "../build", "--specpath", "../build/tmp")
-    shutil.copyfile("../sample_data/config.json", "../build/config.json")
-    shutil.copyfile("../sample_data/report09.dcm", "../build/report09.dcm")
-    shutil.copyfile("../sample_data/template.docx", "../build/template.docx")
-    shutil.copyfile("../readme.txt", "../build/readme.txt")
+            "--clean", "--workpath", "../build/tmp", "--distpath", output_dir, "--specpath", "../build/tmp")
+    shutil.copyfile("../sample_data/config.json", output_dir + "/config.json")
+    shutil.copyfile("../sample_data/report09.dcm", output_dir + "/report09.dcm")
+    shutil.copyfile("../sample_data/template.docx", output_dir + "/template.docx")
+    shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
 
-    os.chdir("../build")
-    zip_file = ZipFile(app_name+'.zip', 'w')
-    # Add multiple files to the zip
-    zip_file.write(app_name+".exe")
-    zip_file.write("config.json")
-    zip_file.write("report09.dcm")
-    zip_file.write("template.docx")
-    zip_file.write("readme.txt")
+    dcmtk_bin = "../dcmtk-3.6.5-win64-dynamic/bin"
+    src_files = os.listdir(dcmtk_bin)
+    for file_name in src_files:
+        full_file_name = os.path.join(dcmtk_bin, file_name)
+        if os.path.isfile(full_file_name):
+            dest = os.path.join(output_dir, file_name)
+            shutil.copy(full_file_name, dest)
+
+    os.chdir(output_dir)
+    test_bat = open(r'ReportGenerator_test.bat', 'w+')
+    test_bat.write(app_name+'.exe report09.dcm config.json\nCMD')
+    test_bat.close()
+
+    zip_file = ZipFile("../"+app_name+'.zip', 'w')
+    src_files = os.listdir(".")
+    for file_name in src_files:
+        zip_file.write(file_name)
     # close the Zip File
     zip_file.close()
 
-    shutil.rmtree("./tmp")
+    shutil.rmtree("../tmp")
 
 
 def generate_report(dcm_sr_path, config_file, log_level, log_file):
