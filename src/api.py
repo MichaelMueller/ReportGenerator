@@ -1,11 +1,12 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
-import importlib
-import importlib_metadata
+from zipfile import ZipFile
+
 from win32com import client
 
 from contextlib import contextmanager
@@ -61,6 +62,7 @@ class Config(DataObject):
         self.template_path = template_path  # type: Optional[str]
         self.dsr2xml_exe = dsr2xml_exe  # type: Optional[str]
         self.pdf2dcm_exe = "pdf2dcm"
+        self.dcmsend_exe = "dcmsend"
         self.dcm_send_ip = None
         self.dcm_send_port = None
         self.keep_temp_files = False
@@ -107,7 +109,7 @@ def doc2pdf(doc_name, pdf_name):
     worddoc = word.Documents.Open(doc_name, ReadOnly=1)
     worddoc.SaveAs(pdf_name, FileFormat=17)
     worddoc.Close()
-    #return pdf_name
+    # return pdf_name
 
 
 def setup_logging(log_level=logging.INFO, log_file=None):
@@ -178,7 +180,8 @@ def dump_config(dump_file, log_level, log_file):
     rule.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     rule.replacements["<BR>"] = "\n"
-    config = Config(template_path="../sample_data/template.docx")
+    config = Config(template_path="template.docx")
+    config.output_dicom_pdf_file = "report09.pdf.dcm"
     config.rules.append(rule)
 
     data = config.to_dict()
@@ -198,6 +201,39 @@ def suppress_stdout():
         finally:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
+
+def get_git_revision_short_hash():
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
+
+def create_installer(log_level=logging.INFO, log_file=None):
+    # logging
+    setup_logging(log_level, log_file)
+    logger = logging.getLogger(__name__)
+    logger.info("creating installer package".format())
+    rev_hash = get_git_revision_short_hash()
+    logger.info("current git hash is {}".format(rev_hash))
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(dir_path)
+    app_name = "ReportGenerator_"+rev_hash
+    run_cmd("pyinstaller", "--name", app_name, "--noconfirm", "--onefile", "--console", "report_generator.py", "--log-level", "WARN",
+            "--clean", "--workpath", "../build/tmp", "--distpath", "../build", "--specpath", "../build/tmp")
+    shutil.copyfile("../sample_data/config.json", "../build/config.json")
+    shutil.copyfile("../sample_data/report09.dcm", "../build/report09.dcm")
+    shutil.copyfile("../sample_data/template.docx", "../build/template.docx")
+    shutil.copyfile("../readme.txt", "../build/readme.txt")
+
+    os.chdir("../build")
+    zip_file = ZipFile(app_name+'.zip', 'w')
+    # Add multiple files to the zip
+    zip_file.write(app_name+".exe")
+    zip_file.write("config.json")
+    zip_file.write("report09.dcm")
+    zip_file.write("template.docx")
+    zip_file.write("readme.txt")
+    # close the Zip File
+    zip_file.close()
+
+    shutil.rmtree("./tmp")
 
 
 def generate_report(dcm_sr_path, config_file, log_level, log_file):
@@ -252,7 +288,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             pdf_tmp_file = tmp_file.name
         logger.info("converting file {} into pdf file {}".format(docx_tmp_file, pdf_tmp_file))
         with suppress_stdout():
-            #docx2pdf.convert(docx_tmp_file, pdf_tmp_file)
+            # docx2pdf.convert(docx_tmp_file, pdf_tmp_file)
             doc2pdf(docx_tmp_file, pdf_tmp_file)
 
         # CONVERT TO DICOM PDF
@@ -268,7 +304,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         if config.dcm_send_ip:
             logger.info("sending file {} to dicom node".format(dcm_pdf_tmp_file))
             # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
-            run_cmd("dcmsend", config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file, print_stdout=False)
+            run_cmd(config.dcmsend_exe, config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file, print_stdout=False)
 
     except Exception as error:
         logger.exception(error)

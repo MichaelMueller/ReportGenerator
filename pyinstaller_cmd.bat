@@ -1,1 +1,0 @@
-pyinstaller --noconfirm --onefile --console src/report_generator.py --log-level WARN --clean
