@@ -216,6 +216,8 @@ def create_installer(log_level=logging.INFO, log_file=None):
     os.chdir(dir_path)
     app_name = "ReportGenerator_"+rev_hash
     output_dir = "../build/output"
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
     run_cmd("pyinstaller", "--name", app_name, "--noconfirm", "--onefile", "--console", "report_generator.py", "--log-level", "WARN",
             "--clean", "--workpath", "../build/tmp", "--distpath", output_dir, "--specpath", "../build/tmp")
     shutil.copyfile("../sample_data/config.json", output_dir + "/config.json")
