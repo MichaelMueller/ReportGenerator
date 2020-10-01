@@ -1,0 +1,21 @@
+{
+    "template_path": "../sample_data/template.docx",
+    "dsr2xml_exe": "dsr2xml",
+    "pdf2dcm_exe": "pdf2dcm",
+    "dcm_send_ip": null,
+    "dcm_send_port": null,
+    "keep_temp_files": false,
+    "output_dicom_pdf_file": "../sample_data/report09.pdf.dcm",
+    "rules": [
+        {
+            "name": "$findings$",
+            "concat_string": "\n",
+            "xpath_expressions": [
+                "/report/document/content/container/text[concept/meaning[contains(text(), \"Finding\")]]/value/text()"
+            ],
+            "replacements": {
+                "<BR>": "\n"
+            }
+        }
+    ]
+}
