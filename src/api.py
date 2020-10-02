@@ -221,9 +221,9 @@ def create_installer(log_level=logging.INFO, log_file=None):
     logger.info("creating installer package".format())
 
     logger.info("running git commands".format())
-    run_cmd("git", "add", "-A", print_stdout=False)
-    run_cmd("git", "commit", "-m", "'installer commit'", print_stdout=False)
-    rev_hash = run_cmd('git', 'rev-parse', '--short', 'HEAD', print_stdout=False)
+    run_cmd("git", "add", "-A", print_stdout=True)
+    run_cmd("git", "commit", "-m", "'installer commit'", print_stdout=True)
+    rev_hash = run_cmd('git', 'rev-parse', '--short', 'HEAD', print_stdout=True)
     logger.info("current git hash is {}".format(rev_hash))
 
     logger.info("going to src dir")
@@ -244,7 +244,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     shutil.copyfile("../sample_data/report10.dcm", output_dir + "/report10.dcm")
     shutil.copyfile("../sample_data/template.docx", output_dir + "/template.docx")
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
-    shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir)
+    shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir+"/dcmtk-3.6.5-win64-dynamic")
 
     os.chdir(output_dir)
     test_bat = open(r'ReportGenerator_test.bat', 'w+')
