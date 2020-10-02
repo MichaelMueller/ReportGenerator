@@ -235,7 +235,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     logger.info("going to src dir")
     dir_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dir_path)
-    app_name = "ReportGenerator_" + rev_hash
+    app_name = "ReportGenerator"
     output_dir = "../build/output"
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
@@ -260,9 +260,12 @@ def create_installer(log_level=logging.INFO, log_file=None):
     shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
 
     os.chdir(output_dir)
-    test_bat = open(r'ReportGenerator_test.bat', 'w+')
-    test_bat.write(app_name + '.exe report09.dcm config.json\nCMD')
-    test_bat.close()
+    additional_file = open(r'ReportGenerator_test.bat', 'w+')
+    additional_file.write(app_name + '.exe report09.dcm config.json\nCMD')
+    additional_file.close()
+    additional_file = open(r'current_git_hash.txt', 'w+')
+    additional_file.write(rev_hash)
+    additional_file.close()
 
     zip_file = ZipFile("../" + app_name + '.zip', 'w')
     zipdir(".", zip_file)
