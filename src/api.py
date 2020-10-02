@@ -249,7 +249,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     logger.info("creating installer package".format())
 
     logger.info("running git commands".format())
-    run_cmd("git", "add", "-A", print_stdout=True)
+    run_cmd("git", "add", "-A", print_stdout=True, exit_on_error=False)
     run_cmd("git", "commit", "-m", "'installer commit'", print_stdout=True, exit_on_error=False)
     rev_hash = run_cmd('git', 'rev-parse', 'HEAD', print_stdout=False)
     logger.info("current git hash is {}".format(rev_hash))
