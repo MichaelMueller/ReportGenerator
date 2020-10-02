@@ -196,6 +196,7 @@ def replace_in_text_file(in_file, data: Dict, out_file):
     with open(out_file, 'w') as file:
         file.write(file_data)
 
+
 def create_default_config():
     # create default config
     rule = Rule("$findings$")
@@ -207,11 +208,12 @@ def create_default_config():
     config.rules.append(rule)
     return config
 
-def dump_config_to_file(dump_file, config):
 
+def dump_config_to_file(dump_file, config):
     data = config.to_dict()
     with open(dump_file, 'w') as out_file:
         json.dump(data, out_file, indent=4)
+
 
 def dump_config(dump_file, log_level, log_file):
     # logging
@@ -299,7 +301,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_config.template_path = "report10_template.html"
     report10_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
 
-    report10_config.rules=[]
+    report10_config.rules = []
     report10_rule1 = Rule("$findings$")
     report10_rule1.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
@@ -324,6 +326,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     zip_file.close()
 
     shutil.rmtree("../tmp")
+
 
 def generate_report(dcm_sr_path, config_file, log_level, log_file):
     # logging
