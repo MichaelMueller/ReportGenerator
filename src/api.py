@@ -58,7 +58,7 @@ class Config(DataObject):
         config.from_dict(data)
         return config
 
-    def __init__(self, template_path=None, dsr2xml_exe="dsr2xml", rules=[]):
+    def __init__(self, template_path=None, dsr2xml_exe="dsr2xml", rules=[], additional_paths=[]):
         self.template_path = template_path  # type: Optional[str]
         self.dsr2xml_exe = dsr2xml_exe  # type: Optional[str]
         self.pdf2dcm_exe = "pdf2dcm"
@@ -69,6 +69,11 @@ class Config(DataObject):
         self.output_dicom_pdf_file = None
         self.skip_pdf_file_creation = False
         self.rules = rules  # type: List[Rule]
+        self.additional_paths = additional_paths  # type List[str]
+
+    def add_paths(self):
+        for additional_path in self.additional_paths:
+            os.environ["PATH"] += os.pathsep + additional_path
 
     def validate(self):
         error = ""
@@ -214,6 +219,7 @@ def zipdir(path, ziph):
         for file in files:
             ziph.write(os.path.join(root, file))
 
+
 def create_installer(log_level=logging.INFO, log_file=None):
     # logging
     setup_logging(log_level, log_file)
@@ -229,29 +235,36 @@ def create_installer(log_level=logging.INFO, log_file=None):
     logger.info("going to src dir")
     dir_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dir_path)
-    app_name = "ReportGenerator_"+rev_hash
+    app_name = "ReportGenerator_" + rev_hash
     output_dir = "../build/output"
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
 
     logger.info("creating pyinstaller")
-    run_cmd("pyinstaller", "--name", app_name, "--noconfirm", "--onefile", "--console", "report_generator.py", "--log-level", "WARN",
+    run_cmd("pyinstaller", "--name", app_name, "--noconfirm", "--onefile", "--console", "report_generator.py",
+            "--log-level", "WARN",
             "--clean", "--workpath", "../build/tmp", "--distpath", output_dir, "--specpath", "../build/tmp")
 
     logger.info("copying additional files")
-    shutil.copyfile("../sample_data/sample_config.json", output_dir + "/config.json")
-    shutil.copyfile("../sample_data/report09.dcm", output_dir + "/report09.dcm")
-    shutil.copyfile("../sample_data/report10.dcm", output_dir + "/report10.dcm")
-    shutil.copyfile("../sample_data/template.docx", output_dir + "/template.docx")
+    sample_data_dir = "../sample_data"
+    src_files = os.listdir(sample_data_dir)
+    for file_name in src_files:
+        if file_name.startswith("offis") or file_name.startswith("image"):
+            continue
+        full_file_name = os.path.join(sample_data_dir, file_name)
+        if os.path.isfile(full_file_name):
+            dest = os.path.join(output_dir, file_name)
+            shutil.copy(full_file_name, dest)
+
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
-    shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir+"/dcmtk-3.6.5-win64-dynamic")
+    shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
 
     os.chdir(output_dir)
     test_bat = open(r'ReportGenerator_test.bat', 'w+')
-    test_bat.write(app_name+'.exe report09.dcm config.json\nCMD')
+    test_bat.write(app_name + '.exe report09.dcm config.json\nCMD')
     test_bat.close()
 
-    zip_file = ZipFile("../"+app_name+'.zip', 'w')
+    zip_file = ZipFile("../" + app_name + '.zip', 'w')
     zipdir(".", zip_file)
     # close the Zip File
     zip_file.close()
@@ -285,52 +298,63 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         template_data = {}
         for rule in config.rules:
             text = ""
-            for xpath_expression in rule.xpath_expressions:
+            for rule_idx, xpath_expression in enumerate(rule.xpath_expressions):
                 xpath_result = root.xpath(xpath_expression)
                 print(xpath_result)
                 if isinstance(xpath_result, List):
                     xpath_result = rule.concat_string.join(xpath_result)
 
-                if xpath_result:
+                if not isinstance(xpath_result, str):
+                    quit("xpath did not produce text: \"{}\" in rule {}, index {}".format(xpath_expression, rule.name,
+                                                                                          str(rule_idx)))
+                elif len(xpath_result) == 0:
+                    logger.warning(
+                        "empty text for xpath \"{}\" in rule {}, index {}".format(xpath_expression, rule.name,
+                                                                                  str(rule_idx)))
+
+                else:
                     if text:
                         text = text + rule.concat_string
                     text = text + xpath_result
                     for search, replace in rule.replacements.items():
                         text = text.replace(search, replace)
+
             template_data[rule.name] = text
-        logger.debug("template_data: {}".format(str(template_data)))
+            logger.debug("template_data: {}".format(str(template_data)))
 
-        # LOAD TEMPLATE AND SET CONTENTS ON NAMED PLACEHOLDERS
-        with tempfile.NamedTemporaryFile(suffix=".docx", delete=not config.keep_temp_files) as tmp_file:
-            docx_tmp_file = tmp_file.name
-        logger.info("replacing contents from template docx file {} into {}".format(config.template_path, docx_tmp_file))
-        replace_in_docx(config.template_path, template_data, docx_tmp_file)
+            # LOAD TEMPLATE AND SET CONTENTS ON NAMED PLACEHOLDERS
+            with tempfile.NamedTemporaryFile(suffix=".docx", delete=not config.keep_temp_files) as tmp_file:
+                docx_tmp_file = tmp_file.name
+            logger.info("replacing contents from template docx file {} into {}".format(config.template_path,
+                                                                                       docx_tmp_file))
+            replace_in_docx(config.template_path, template_data, docx_tmp_file)
 
-        # CONVERT TO PDF
-        pdf_tmp_file = None
-        if not config.skip_pdf_file_creation:
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=not config.keep_temp_files) as tmp_file:
-                pdf_tmp_file = tmp_file.name
-            logger.info("converting file {} into pdf file {}".format(docx_tmp_file, pdf_tmp_file))
-            with suppress_stdout():
-                # docx2pdf.convert(docx_tmp_file, pdf_tmp_file)
-                doc2pdf(docx_tmp_file, pdf_tmp_file)
+            # CONVERT TO PDF
+            pdf_tmp_file = None
+            if not config.skip_pdf_file_creation:
+                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=not config.keep_temp_files) as tmp_file:
+                    pdf_tmp_file = tmp_file.name
+                logger.info("converting file {} into pdf file {}".format(docx_tmp_file, pdf_tmp_file))
+                with suppress_stdout():
+                    # docx2pdf.convert(docx_tmp_file, pdf_tmp_file)
+                    doc2pdf(docx_tmp_file, pdf_tmp_file)
 
-        if pdf_tmp_file:
-            # CONVERT TO DICOM PDF
-            if config.output_dicom_pdf_file:
-                dcm_pdf_tmp_file = config.output_dicom_pdf_file
-            else:
-                with tempfile.NamedTemporaryFile(suffix=".dcm", delete=not config.keep_temp_files) as tmp_file:
-                    dcm_pdf_tmp_file = tmp_file.name
-            logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
-            run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path)
+            if pdf_tmp_file:
+                # CONVERT TO DICOM PDF
+                if config.output_dicom_pdf_file:
+                    dcm_pdf_tmp_file = config.output_dicom_pdf_file
+                else:
+                    with tempfile.NamedTemporaryFile(suffix=".dcm", delete=not config.keep_temp_files) as tmp_file:
+                        dcm_pdf_tmp_file = tmp_file.name
+                logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
+                run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path)
 
-            # SEND TO DICOM NODE
-            if config.dcm_send_ip:
-                logger.info("sending file {} to dicom node".format(dcm_pdf_tmp_file))
+                # SEND TO DICOM NODE
+                if config.dcm_send_ip:
+                    logger.info("sending file {} to dicom node".format(dcm_pdf_tmp_file))
                 # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
-                run_cmd(config.dcm_send_exe, config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file, print_stdout=False)
+                run_cmd(config.dcm_send_exe, config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file,
+                        print_stdout=False)
 
     except Exception as error:
         logger.exception(error)
