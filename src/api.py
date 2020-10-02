@@ -152,7 +152,7 @@ def quit(error):
     sys.exit(-1)
 
 
-def run_cmd(*args, print_stdout=False):
+def run_cmd(*args, print_stdout=False, exit_on_error=True):
     logger = logging.getLogger(__name__)
     cmd = ' '.join(args)
     logger.debug("running the following command: {}".format(cmd))
@@ -164,7 +164,7 @@ def run_cmd(*args, print_stdout=False):
         stdout = subprocess.PIPE
 
     result = subprocess.run(args, stdout=stdout, stderr=stderr)
-    if result.returncode != 0:
+    if result.returncode != 0 and exit_on_error:
         quit(
             "cmd \"{}\" failed with code {} the following output: {}. aborting.".format(cmd, str(result.returncode),
                                                                                         result.stderr))
@@ -250,7 +250,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
 
     logger.info("running git commands".format())
     run_cmd("git", "add", "-A", print_stdout=True)
-    run_cmd("git", "commit", "-m", "'installer commit'", print_stdout=True)
+    run_cmd("git", "commit", "-m", "'installer commit'", print_stdout=True, exit_on_error=False)
     rev_hash = run_cmd('git', 'rev-parse', 'HEAD', print_stdout=False)
     logger.info("current git hash is {}".format(rev_hash))
 
