@@ -310,17 +310,22 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_config.output_template_file = "report10.html"
     report10_config.template_path = "report10_template.html"
     report10_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
+    report10_config.skip_pdf_file_creation = True
+    report10_config.output_dicom_xml_file = "report10.xml"
 
     report10_config.rules = []
     report10_rule1 = Rule()
     report10_rule1.name = "$findings$"
+    report10_rule1.concat_string = "<br>"
     report10_rule1.xpath_expressions.append(
-        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+        '/report/document/content/container/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     report10_config.rules.append(report10_rule1)
+
     report10_rule2 = Rule()
     report10_rule2.name = "$name$"
-    report10_rule2.xpath_expressions.append(
-        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+    report10_rule2.concat_string = " "
+    report10_rule2.xpath_expressions.append("/report/patient/name/first/text()")
+    report10_rule2.xpath_expressions.append("/report/patient/name/last/text()")
     report10_config.rules.append(report10_rule2)
 
     dump_config_to_file("report10_config.json", report10_config)
@@ -375,7 +380,6 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             text = ""
             for rule_idx, xpath_expression in enumerate(rule.xpath_expressions):
                 xpath_result = root.xpath(xpath_expression)
-                print(xpath_result)
                 if isinstance(xpath_result, List):
                     xpath_result = rule.concat_string.join(xpath_result)
 
@@ -388,6 +392,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                                                                                   str(rule_idx)))
 
                 else:
+                    logger.info("result for xpath {}: {}".format(xpath_expression, xpath_result))
                     if text:
                         text = text + rule.concat_string
                     text = text + xpath_result
@@ -437,9 +442,9 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                 # SEND TO DICOM NODE
                 if config.dcm_send_ip:
                     logger.info("sending file {} to dicom node".format(dcm_pdf_tmp_file))
-                # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
-                run_cmd(config.dcm_send_exe, config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file,
-                        print_stdout=False)
+                    # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
+                    run_cmd(config.dcm_send_exe, config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file,
+                            print_stdout=False)
 
     except Exception as error:
         logger.exception(error)
