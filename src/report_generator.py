@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser(
                 ' a template document (like word etc)')
 parser.add_argument('dicom_sr_file', type=str, help='actual DICOM SR report file')
 parser.add_argument('config_file', type=str, help='actual json config file being used to produce the sr. refer to the manual')
-parser.add_argument('--log_level', type=int, default=logging.INFO,
+parser.add_argument('--log_level', type=int, default=logging.WARN,
                     help='log level (CRITICAL = 50, ERROR = 40, WARNING = 30, INFO = 20, DEBUG = 10, NOTSET = 0')
 parser.add_argument('--log_file', type=str, default=None, help='log file')
 

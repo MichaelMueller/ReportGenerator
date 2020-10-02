@@ -1,0 +1,4 @@
+pyinstaller
+docx
+lxml
+pywin32

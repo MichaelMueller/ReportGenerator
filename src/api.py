@@ -62,11 +62,12 @@ class Config(DataObject):
         self.template_path = template_path  # type: Optional[str]
         self.dsr2xml_exe = dsr2xml_exe  # type: Optional[str]
         self.pdf2dcm_exe = "pdf2dcm"
-        self.dcmsend_exe = "dcmsend"
+        self.dcm_send_exe = "dcmsend"
         self.dcm_send_ip = None
         self.dcm_send_port = None
         self.keep_temp_files = False
         self.output_dicom_pdf_file = None
+        self.skip_pdf_file_creation = False
         self.rules = rules  # type: List[Rule]
 
     def validate(self):
@@ -144,19 +145,23 @@ def quit(error):
     sys.exit(-1)
 
 
-def run_cmd(*args, print_stdout=True):
+def run_cmd(*args, print_stdout=False):
     logger = logging.getLogger(__name__)
     cmd = ' '.join(args)
     logger.debug("running the following command: {}".format(cmd))
-    result = subprocess.run(args, stdout=subprocess.PIPE)
+    if print_stdout:
+        stderr = sys.stderr
+        stdout = sys.stdout
+    else:
+        stderr = subprocess.PIPE
+        stdout = subprocess.PIPE
+
+    result = subprocess.run(args, stdout=stdout, stderr=stderr)
     if result.returncode != 0:
         quit(
             "cmd \"{}\" failed with code {} the following output: {}. aborting.".format(cmd, str(result.returncode),
                                                                                         result.stderr))
-    elif print_stdout:
-        result = result.stdout.decode("utf-8")
-        if result:
-            logger.info(result)
+    return result.stdout.decode("utf-8").strip() if result.stdout else None
 
 
 def replace_in_docx(docx_path, data, output_docx_path):
@@ -202,36 +207,44 @@ def suppress_stdout():
             sys.stdout = old_stdout
             sys.stderr = old_stderr
 
-def get_git_revision_short_hash():
-    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
+
+def zipdir(path, ziph):
+    # ziph is zipfile handle
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            ziph.write(os.path.join(root, file))
 
 def create_installer(log_level=logging.INFO, log_file=None):
     # logging
     setup_logging(log_level, log_file)
     logger = logging.getLogger(__name__)
     logger.info("creating installer package".format())
-    rev_hash = get_git_revision_short_hash()
+
+    logger.info("running git commands".format())
+    run_cmd("git", "add", "-A", print_stdout=False)
+    run_cmd("git", "commit", "-m", "'installer commit'", print_stdout=False)
+    rev_hash = run_cmd('git', 'rev-parse', '--short', 'HEAD', print_stdout=False)
     logger.info("current git hash is {}".format(rev_hash))
+
+    logger.info("going to src dir")
     dir_path = os.path.dirname(os.path.realpath(__file__))
     os.chdir(dir_path)
     app_name = "ReportGenerator_"+rev_hash
     output_dir = "../build/output"
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
+
+    logger.info("creating pyinstaller")
     run_cmd("pyinstaller", "--name", app_name, "--noconfirm", "--onefile", "--console", "report_generator.py", "--log-level", "WARN",
             "--clean", "--workpath", "../build/tmp", "--distpath", output_dir, "--specpath", "../build/tmp")
-    shutil.copyfile("../sample_data/config.json", output_dir + "/config.json")
+
+    logger.info("copying additional files")
+    shutil.copyfile("../sample_data/sample_config.json", output_dir + "/config.json")
     shutil.copyfile("../sample_data/report09.dcm", output_dir + "/report09.dcm")
+    shutil.copyfile("../sample_data/report10.dcm", output_dir + "/report10.dcm")
     shutil.copyfile("../sample_data/template.docx", output_dir + "/template.docx")
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
-
-    dcmtk_bin = "../dcmtk-3.6.5-win64-dynamic/bin"
-    src_files = os.listdir(dcmtk_bin)
-    for file_name in src_files:
-        full_file_name = os.path.join(dcmtk_bin, file_name)
-        if os.path.isfile(full_file_name):
-            dest = os.path.join(output_dir, file_name)
-            shutil.copy(full_file_name, dest)
+    shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir)
 
     os.chdir(output_dir)
     test_bat = open(r'ReportGenerator_test.bat', 'w+')
@@ -239,9 +252,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     test_bat.close()
 
     zip_file = ZipFile("../"+app_name+'.zip', 'w')
-    src_files = os.listdir(".")
-    for file_name in src_files:
-        zip_file.write(file_name)
+    zipdir(".", zip_file)
     # close the Zip File
     zip_file.close()
 
@@ -296,27 +307,30 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         replace_in_docx(config.template_path, template_data, docx_tmp_file)
 
         # CONVERT TO PDF
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=not config.keep_temp_files) as tmp_file:
-            pdf_tmp_file = tmp_file.name
-        logger.info("converting file {} into pdf file {}".format(docx_tmp_file, pdf_tmp_file))
-        with suppress_stdout():
-            # docx2pdf.convert(docx_tmp_file, pdf_tmp_file)
-            doc2pdf(docx_tmp_file, pdf_tmp_file)
+        pdf_tmp_file = None
+        if not config.skip_pdf_file_creation:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=not config.keep_temp_files) as tmp_file:
+                pdf_tmp_file = tmp_file.name
+            logger.info("converting file {} into pdf file {}".format(docx_tmp_file, pdf_tmp_file))
+            with suppress_stdout():
+                # docx2pdf.convert(docx_tmp_file, pdf_tmp_file)
+                doc2pdf(docx_tmp_file, pdf_tmp_file)
 
-        # CONVERT TO DICOM PDF
-        if config.output_dicom_pdf_file:
-            dcm_pdf_tmp_file = config.output_dicom_pdf_file
-        else:
-            with tempfile.NamedTemporaryFile(suffix=".dcm", delete=not config.keep_temp_files) as tmp_file:
-                dcm_pdf_tmp_file = tmp_file.name
-        logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
-        run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path)
+        if pdf_tmp_file:
+            # CONVERT TO DICOM PDF
+            if config.output_dicom_pdf_file:
+                dcm_pdf_tmp_file = config.output_dicom_pdf_file
+            else:
+                with tempfile.NamedTemporaryFile(suffix=".dcm", delete=not config.keep_temp_files) as tmp_file:
+                    dcm_pdf_tmp_file = tmp_file.name
+            logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
+            run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path)
 
-        # SEND TO DICOM NODE
-        if config.dcm_send_ip:
-            logger.info("sending file {} to dicom node".format(dcm_pdf_tmp_file))
-            # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
-            run_cmd(config.dcmsend_exe, config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file, print_stdout=False)
+            # SEND TO DICOM NODE
+            if config.dcm_send_ip:
+                logger.info("sending file {} to dicom node".format(dcm_pdf_tmp_file))
+                # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
+                run_cmd(config.dcm_send_exe, config.dcm_send_ip, config.dcm_send_port, dcm_pdf_tmp_file, print_stdout=False)
 
     except Exception as error:
         logger.exception(error)
