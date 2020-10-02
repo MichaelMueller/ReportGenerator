@@ -318,7 +318,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     report10_config.rules.append(report10_rule1)
     report10_rule2 = Rule()
-    report10_rule1.name = "$name$"
+    report10_rule2.name = "$name$"
     report10_rule2.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     report10_config.rules.append(report10_rule2)
