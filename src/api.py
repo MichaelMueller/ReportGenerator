@@ -20,6 +20,9 @@ from docx import Document
 
 class DataObject:
 
+    def __init__(self):
+        pass
+
     def from_dict(self, data: Dict):
         for key, value in data.items():
             setattr(self, key, value)
@@ -42,11 +45,12 @@ class Rule(DataObject):
         rule.from_dict(data)
         return rule
 
-    def __init__(self, name=None, concat_string="\n", xpath_expressions=[], replacements={}):
-        self.name = name
-        self.concat_string = concat_string
-        self.xpath_expressions = xpath_expressions
-        self.replacements = replacements
+    def __init__(self):
+        super().__init__()
+        self.name = None
+        self.concat_string = "\n"
+        self.xpath_expressions = []
+        self.replacements = {}
 
     def validate(self):
         error = None
@@ -62,9 +66,10 @@ class Config(DataObject):
         config.from_dict(data)
         return config
 
-    def __init__(self, template_path=None, dsr2xml_exe="dsr2xml", rules=[], additional_paths=[]):
-        self.template_path = template_path  # type: Optional[str]
-        self.dsr2xml_exe = dsr2xml_exe  # type: Optional[str]
+    def __init__(self):
+        super().__init__()
+        self.template_path = None  # type: Optional[str]
+        self.dsr2xml_exe = "dsr2xml"  # type: Optional[str]
         self.pdf2dcm_exe = "pdf2dcm"
         self.dcm_send_exe = "dcmsend"
         self.dcm_send_ip = None
@@ -75,8 +80,8 @@ class Config(DataObject):
         self.output_template_file = None
         self.output_dicom_pdf_file = None
         self.skip_pdf_file_creation = False
-        self.rules = rules  # type: List[Rule]
-        self.additional_paths = additional_paths  # type List[str]
+        self.rules = []  # type: List[Rule]
+        self.additional_paths = []  # type List[str]
 
     def add_paths(self):
         for additional_path in self.additional_paths:
@@ -202,11 +207,13 @@ def replace_in_text_file(in_file, data: Dict, out_file):
 
 def create_default_config():
     # create default config
-    rule = Rule("$findings$")
+    rule = Rule()
+    rule.name = "$findings$"
     rule.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     rule.replacements["<BR>"] = "\n"
-    config = Config(template_path="report09_template.docx")
+    config = Config()
+    config.template_path = "report09_template.docx"
     config.output_dicom_pdf_file = "report09.pdf.dcm"
     config.rules.append(rule)
     return config
@@ -305,11 +312,13 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
 
     report10_config.rules = []
-    report10_rule1 = Rule("$findings$")
+    report10_rule1 = Rule()
+    report10_rule1.name = "$findings$"
     report10_rule1.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     report10_config.rules.append(report10_rule1)
-    report10_rule2 = Rule("$name$")
+    report10_rule2 = Rule()
+    report10_rule1.name = "$name$"
     report10_rule2.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     report10_config.rules.append(report10_rule2)
