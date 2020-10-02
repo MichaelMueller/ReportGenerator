@@ -25,7 +25,10 @@ class DataObject:
             setattr(self, key, value)
 
     def to_dict(self):
-        return self.__dict__.copy()
+        data = {}
+        for key, value in self.__dict__.items():
+            data[key] = value
+        return data
 
     def validate(self):
         return None
