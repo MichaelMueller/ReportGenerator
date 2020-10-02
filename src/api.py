@@ -7,6 +7,7 @@ import sys
 import tempfile
 from zipfile import ZipFile
 
+from pdfkit import pdfkit
 from win32com import client
 
 from contextlib import contextmanager
@@ -66,6 +67,7 @@ class Config(DataObject):
         self.dcm_send_ip = None
         self.dcm_send_port = None
         self.keep_temp_files = False
+        self.output_template_file = None
         self.output_dicom_pdf_file = None
         self.skip_pdf_file_creation = False
         self.rules = rules  # type: List[Rule]
@@ -179,24 +181,44 @@ def replace_in_docx(docx_path, data, output_docx_path):
     doc.save(output_docx_path)
 
 
+def replace_in_text_file(in_file, data: Dict, out_file):
+    # Read in the file
+    with open(in_file, 'r') as file:
+        file_data = file.read()
+
+    # Replace the target string
+    for placeholder, new_text in data.items():
+        file_data = file_data.replace(placeholder, new_text)
+
+    # Write the file out again
+    with open(out_file, 'w') as file:
+        file.write(file_data)
+
+def create_default_config():
+    # create default config
+    rule = Rule("$findings$")
+    rule.xpath_expressions.append(
+        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+    rule.replacements["<BR>"] = "\n"
+    config = Config(template_path="report09_template.docx")
+    config.output_dicom_pdf_file = "report09.pdf.dcm"
+    config.rules.append(rule)
+    return config
+
+def dump_config_to_file(dump_file, config):
+
+    data = config.to_dict()
+    with open(dump_file, 'w') as out_file:
+        json.dump(data, out_file, indent=4)
+
 def dump_config(dump_file, log_level, log_file):
     # logging
     setup_logging(log_level, log_file)
     logger = logging.getLogger(__name__)
     logger.info("dumping default config into {}".format(dump_file))
 
-    # create default config
-    rule = Rule("$findings$")
-    rule.xpath_expressions.append(
-        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
-    rule.replacements["<BR>"] = "\n"
-    config = Config(template_path="template.docx")
-    config.output_dicom_pdf_file = "report09.pdf.dcm"
-    config.rules.append(rule)
-
-    data = config.to_dict()
-    with open(dump_file, 'w') as out_file:
-        json.dump(data, out_file, indent=4)
+    config = create_default_config()
+    dump_config_to_file(dump_file, config)
 
 
 @contextmanager
@@ -260,9 +282,39 @@ def create_installer(log_level=logging.INFO, log_file=None):
     shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
 
     os.chdir(output_dir)
-    additional_file = open(r'ReportGenerator_test.bat', 'w+')
-    additional_file.write(app_name + '.exe report09.dcm config.json\nCMD')
-    additional_file.close()
+    logger.info("creating test case files: report09")
+    report09_config = create_default_config()
+    report09_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
+    dump_config_to_file("report09_config.json", report09_config)
+    report09_batch = open(r'ReportGenerator_report09.bat', 'w+')
+    report09_batch.write(app_name + '.exe report09.dcm report09_config.json\nCMD')
+    report09_batch.close()
+
+    logger.info("creating test case files: report10")
+    report10_config = create_default_config()
+    report10_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
+    report10_config.rules=[]
+    report10_rule1 = Rule("$findings$")
+    report10_rule1.xpath_expressions.append(
+        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+    report10_config.rules.append(report10_rule1)
+    report10_rule2 = Rule("$name$")
+    report10_rule2.xpath_expressions.append(
+        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+    report10_config.rules.append(report10_rule2)
+    report10_config = Config(template_path="report10_template.html")
+    report10_config.output_dicom_pdf_file = "report10.pdf.dcm"
+    report10_config.output_template_file = "report10.html"
+    dump_config_to_file("report10_config.json", report09_config)
+    report10_batch = open(r'ReportGenerator_report10.bat', 'w+')
+    report10_batch.write(app_name + '.exe report10.dcm report10_config.json\nCMD')
+    report10_batch.close()
+
+    dump_config_to_file("report09_config.json", report09_config)
+    report09_batch = open(r'ReportGenerator_report09.bat', 'w+')
+    report09_batch.write(app_name + '.exe report09.dcm report09_config.json\nCMD')
+    report09_batch.close()
+
     additional_file = open(r'current_git_hash.txt', 'w+')
     additional_file.write(rev_hash)
     additional_file.close()
@@ -273,7 +325,6 @@ def create_installer(log_level=logging.INFO, log_file=None):
     zip_file.close()
 
     shutil.rmtree("../tmp")
-
 
 def generate_report(dcm_sr_path, config_file, log_level, log_file):
     # logging
@@ -288,6 +339,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             error_str = config.validate()
             if error_str:
                 quit(error_str)
+        config.add_paths()
 
         # GENERATE XML FILE
         with tempfile.NamedTemporaryFile(suffix=".xml", delete=not config.keep_temp_files) as tmp_file:
@@ -326,21 +378,31 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             logger.debug("template_data: {}".format(str(template_data)))
 
             # LOAD TEMPLATE AND SET CONTENTS ON NAMED PLACEHOLDERS
-            with tempfile.NamedTemporaryFile(suffix=".docx", delete=not config.keep_temp_files) as tmp_file:
-                docx_tmp_file = tmp_file.name
+            _, file_extension = os.path.splitext(config.template_path)
+            template_is_word = file_extension == ".docx"
+            if config.output_template_file:
+                filled_template_file = config.output_template_file
+            else:
+                with tempfile.NamedTemporaryFile(suffix=".docx", delete=not config.keep_temp_files) as tmp_file:
+                    filled_template_file = tmp_file.name
             logger.info("replacing contents from template docx file {} into {}".format(config.template_path,
-                                                                                       docx_tmp_file))
-            replace_in_docx(config.template_path, template_data, docx_tmp_file)
+                                                                                       filled_template_file))
+            if template_is_word:
+                replace_in_docx(config.template_path, template_data, filled_template_file)
+            else:
+                replace_in_text_file(config.template_path, template_data, filled_template_file)
 
             # CONVERT TO PDF
             pdf_tmp_file = None
             if not config.skip_pdf_file_creation:
                 with tempfile.NamedTemporaryFile(suffix=".pdf", delete=not config.keep_temp_files) as tmp_file:
                     pdf_tmp_file = tmp_file.name
-                logger.info("converting file {} into pdf file {}".format(docx_tmp_file, pdf_tmp_file))
+                logger.info("converting file {} into pdf file {}".format(filled_template_file, pdf_tmp_file))
                 with suppress_stdout():
-                    # docx2pdf.convert(docx_tmp_file, pdf_tmp_file)
-                    doc2pdf(docx_tmp_file, pdf_tmp_file)
+                    if template_is_word:
+                        doc2pdf(filled_template_file, pdf_tmp_file)
+                    else:
+                        pdfkit.from_file(filled_template_file, pdf_tmp_file)
 
             if pdf_tmp_file:
                 # CONVERT TO DICOM PDF

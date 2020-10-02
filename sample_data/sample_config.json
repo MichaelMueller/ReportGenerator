@@ -1,11 +1,12 @@
 {
-    "template_path": "template.docx",
+    "template_path": "report09_template.docx",
     "dsr2xml_exe": "dsr2xml",
     "pdf2dcm_exe": "pdf2dcm",
     "dcm_send_exe": "dcmsend",
     "dcm_send_ip": null,
     "dcm_send_port": null,
     "keep_temp_files": false,
+    "output_template_file": null,
     "output_dicom_pdf_file": "report09.pdf.dcm",
     "skip_pdf_file_creation": false,
     "rules": [
@@ -19,5 +20,6 @@
                 "<BR>": "\n"
             }
         }
-    ]
+    ],
+    "additional_paths": []
 }

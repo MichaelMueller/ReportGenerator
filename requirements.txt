@@ -2,3 +2,4 @@ pyinstaller
 docx
 lxml
 pywin32
+pdfkit
