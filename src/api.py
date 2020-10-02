@@ -305,7 +305,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_config = Config(template_path="report10_template.html")
     report10_config.output_dicom_pdf_file = "report10.pdf.dcm"
     report10_config.output_template_file = "report10.html"
-    dump_config_to_file("report10_config.json", report09_config)
+    dump_config_to_file("report10_config.json", report10_config)
     report10_batch = open(r'ReportGenerator_report10.bat', 'w+')
     report10_batch.write(app_name + '.exe report10.dcm report10_config.json\nCMD')
     report10_batch.close()
