@@ -6,6 +6,8 @@
     "dcm_send_ip": null,
     "dcm_send_port": null,
     "keep_temp_files": false,
+    "output_dicom_xml_file": null,
+    "quit_after_xml_file_creation": false,
     "output_template_file": null,
     "output_dicom_pdf_file": "report09.pdf.dcm",
     "skip_pdf_file_creation": false,

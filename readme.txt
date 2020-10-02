@@ -25,6 +25,8 @@ DICOM SR file
     "dcm_send_ip": null, 							// dcmsend ip destination, HINT: if this is null, no dcmsend command will be issued
     "dcm_send_port": null,  						// dcmsend port
     "keep_temp_files": false, 						// whether to keep temp files (useful for debugging)
+    "output_dicom_xml_file": null,					// where the intermediate xml file will be placed, if this is null a temp file will be used
+    "quit_after_xml_file_creation": false,			// set this to true if you need to just create the xml file
     "output_template_file": null,					// where the filled (!) template file will be written. if this is null a temp file will be used.
     "output_dicom_pdf_file": "report09.pdf.dcm", 	// the output dcm file, if this is null a temp name will be used
     "skip_pdf_file_creation": false, 				// if True no pdf will be created. use this if you just want to convert to text files

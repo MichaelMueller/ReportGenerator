@@ -67,6 +67,8 @@ class Config(DataObject):
         self.dcm_send_ip = None
         self.dcm_send_port = None
         self.keep_temp_files = False
+        self.output_dicom_xml_file = None
+        self.quit_after_xml_file_creation = False
         self.output_template_file = None
         self.output_dicom_pdf_file = None
         self.skip_pdf_file_creation = False
@@ -339,10 +341,16 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         config.add_paths()
 
         # GENERATE XML FILE
-        with tempfile.NamedTemporaryFile(suffix=".xml", delete=not config.keep_temp_files) as tmp_file:
-            sr_xml_file = tmp_file.name
+        if config.output_dicom_xml_file:
+            sr_xml_file = config.output_dicom_xml_file
+        else:
+            with tempfile.NamedTemporaryFile(suffix=".xml", delete=not config.keep_temp_files) as tmp_file:
+                sr_xml_file = tmp_file.name
         logger.info("converting DICOM SR {} to XML file {}".format(dcm_sr_path, sr_xml_file))
         run_cmd(config.dsr2xml_exe, dcm_sr_path, sr_xml_file)
+        if config.quit_after_xml_file_creation:
+            logger.info("xml created. quit requested.")
+            sys.exit(0)
 
         # EXTRACT AND CONCAT CONTENTS USING XPATH
         logger.info("retrieving contents from XML file {}".format(sr_xml_file))
