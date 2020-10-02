@@ -292,7 +292,11 @@ def create_installer(log_level=logging.INFO, log_file=None):
 
     logger.info("creating test case files: report10")
     report10_config = create_default_config()
+    report10_config.output_dicom_pdf_file = "report10.pdf.dcm"
+    report10_config.output_template_file = "report10.html"
+    report10_config.template_path = "report10_template.html"
     report10_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
+
     report10_config.rules=[]
     report10_rule1 = Rule("$findings$")
     report10_rule1.xpath_expressions.append(
@@ -302,9 +306,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_rule2.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     report10_config.rules.append(report10_rule2)
-    report10_config = Config(template_path="report10_template.html")
-    report10_config.output_dicom_pdf_file = "report10.pdf.dcm"
-    report10_config.output_template_file = "report10.html"
+    
     dump_config_to_file("report10_config.json", report10_config)
     report10_batch = open(r'ReportGenerator_report10.bat', 'w+')
     report10_batch.write(app_name + '.exe report10.dcm report10_config.json\nCMD')
