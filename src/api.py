@@ -25,7 +25,7 @@ class DataObject:
             setattr(self, key, value)
 
     def to_dict(self):
-        return self.__dict__
+        return self.__dict__.copy()
 
     def validate(self):
         return None
@@ -311,11 +311,6 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_batch = open(r'ReportGenerator_report10.bat', 'w+')
     report10_batch.write(app_name + '.exe report10.dcm report10_config.json\nCMD')
     report10_batch.close()
-
-    dump_config_to_file("report09_config.json", report09_config)
-    report09_batch = open(r'ReportGenerator_report09.bat', 'w+')
-    report09_batch.write(app_name + '.exe report09.dcm report09_config.json\nCMD')
-    report09_batch.close()
 
     additional_file = open(r'current_git_hash.txt', 'w+')
     additional_file.write(rev_hash)
