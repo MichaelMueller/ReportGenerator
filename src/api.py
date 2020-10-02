@@ -306,7 +306,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_rule2.xpath_expressions.append(
         '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
     report10_config.rules.append(report10_rule2)
-    
+
     dump_config_to_file("report10_config.json", report10_config)
     report10_batch = open(r'ReportGenerator_report10.bat', 'w+')
     report10_batch.write(app_name + '.exe report10.dcm report10_config.json\nCMD')
