@@ -7,7 +7,7 @@ import sys
 import tempfile
 from zipfile import ZipFile
 
-from pdfkit import pdfkit
+import pdfkit
 from win32com import client
 
 from contextlib import contextmanager
