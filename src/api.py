@@ -295,8 +295,8 @@ def create_installer(log_level=logging.INFO, log_file=None):
             shutil.copy(full_file_name, dest)
 
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
-    shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
-    shutil.copytree("../poppler-20.11.0", output_dir + "/poppler-20.11.0")
+    shutil.copytree(base_dir+"/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
+    shutil.copytree(base_dir+"/poppler-20.11.0", output_dir + "/poppler-20.11.0")
 
     os.chdir(output_dir)
     logger.info("creating test case files: report09")
