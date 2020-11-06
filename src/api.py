@@ -285,7 +285,6 @@ def create_installer(log_level=logging.INFO, log_file=None):
 
     logger.info("copying additional files")
     base_dir = "../base"
-    src_files = os.listdir(base_dir)
 
     shutil.copyfile(base_dir+"/report09.dcm", output_dir + "/report09.dcm")
     shutil.copyfile(base_dir+"/report09_template.docx", output_dir + "/report09_template.docx")
@@ -303,7 +302,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report09_config = create_default_config()
     dump_config_to_file("report09_config.json", report09_config)
     report09_batch = open(r'ReportGenerator_report09.bat', 'w+')
-    report09_batch.write(app_name + '.exe report09.dcm report09_config.json\nCMD')
+    report09_batch.write(app_name + '.exe report09.dcm report09_config.json --log_level 10\nCMD')
     report09_batch.close()
 
     logger.info("creating test case files: report10")
@@ -331,7 +330,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
 
     dump_config_to_file("report10_config.json", report10_config)
     report10_batch = open(r'ReportGenerator_report10.bat', 'w+')
-    report10_batch.write(app_name + '.exe report10.dcm report10_config.json\nCMD')
+    report10_batch.write(app_name + '.exe report10.dcm report10_config.json --log_level 10\nCMD')
     report10_batch.close()
 
     additional_file = open(r'current_git_hash.txt', 'w+')
