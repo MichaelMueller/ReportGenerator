@@ -286,14 +286,14 @@ def create_installer(log_level=logging.INFO, log_file=None):
     logger.info("copying additional files")
     base_dir = "../base"
     src_files = os.listdir(base_dir)
-    for file_name in src_files:
-        if file_name.startswith("offis") or file_name.startswith("image"):
-            continue
-        full_file_name = os.path.join(base_dir, file_name)
-        if os.path.isfile(full_file_name):
-            dest = os.path.join(output_dir, file_name)
-            shutil.copy(full_file_name, dest)
 
+    shutil.copyfile(base_dir+"/report09.dcm", output_dir + "/report09.dcm")
+    shutil.copyfile(base_dir+"/report09_template.docx", output_dir + "/report09_template.docx")
+    shutil.copyfile(base_dir+"/report10.dcm", output_dir + "/report10.dcm")
+    shutil.copyfile(base_dir+"/report10_template.html", output_dir + "/report10_template.html")
+    sample_config = create_default_config()
+    dump_config_to_file(base_dir+"/config.json", sample_config)
+    shutil.copyfile(base_dir+"/config.json", output_dir + "/config.json")
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
     shutil.copytree(base_dir+"/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
     shutil.copytree(base_dir+"/poppler-20.11.0", output_dir + "/poppler-20.11.0")
