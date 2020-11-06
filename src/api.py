@@ -296,11 +296,11 @@ def create_installer(log_level=logging.INFO, log_file=None):
 
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
     shutil.copytree("../dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
+    shutil.copytree("../poppler-20.11.0", output_dir + "/poppler-20.11.0")
 
     os.chdir(output_dir)
     logger.info("creating test case files: report09")
     report09_config = create_default_config()
-    report09_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
     dump_config_to_file("report09_config.json", report09_config)
     report09_batch = open(r'ReportGenerator_report09.bat', 'w+')
     report09_batch.write(app_name + '.exe report09.dcm report09_config.json\nCMD')
@@ -311,7 +311,6 @@ def create_installer(log_level=logging.INFO, log_file=None):
     report10_config.output_dicom_pdf_file = "report10.pdf.dcm"
     report10_config.output_template_file = "report10.html"
     report10_config.template_path = "report10_template.html"
-    report10_config.additional_paths.append("dcmtk-3.6.5-win64-dynamic/bin")
     report10_config.skip_pdf_file_creation = True
     report10_config.output_dicom_xml_file = "report10.xml"
 

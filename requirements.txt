@@ -3,3 +3,4 @@ docx
 lxml
 pywin32
 pdfkit
+pdf2image
