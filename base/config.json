@@ -18,5 +18,6 @@
     "pdf2dcm_exe_additional_options": [],
     "dcm_send_ip": null,
     "dcm_send_port": null,
+    "dcm_send_dcm_sr": false,
     "dcmsend_exe_additional_options": []
 }

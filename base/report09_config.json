@@ -8,7 +8,7 @@
         "-Ee",
         "-Ec"
     ],
-    "target": "dcm_pdf",
+    "target": "dcm_images",
     "output_dir": "./output",
     "rules": [
         {
@@ -27,8 +27,8 @@
         "--no-checks"
     ],
     "pdf2dcm_exe_additional_options": [],
-    "dcm_send_ip": "127.0.0.1",
-    "dcm_send_port": "2727",
-    "dcm_send_dcm_sr": true,
+    "dcm_send_ip": null,
+    "dcm_send_port": null,
+    "dcm_send_dcm_sr": false,
     "dcmsend_exe_additional_options": []
 }
