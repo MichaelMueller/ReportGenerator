@@ -69,21 +69,18 @@ class Config(DataObject):
 
     def __init__(self):
         super().__init__()
-        self.template_path = None  # type: Optional[str]
+        self.additional_paths = ["dcmtk-3.6.5-win64-dynamic/bin", "poppler-20.11.0/bin"]  # type List[str]
+        self.temp_dir = None
         self.dsr2xml_exe_additional_options = ["-Ee", "-Ec"]  # type: Optional[List[str]]
+        self.target = "dcm_images"  # one of "xml", "template", "dcm_pdf", "dcm_images"
+        self.output_dir = "."
+        self.rules = []  # type: List[Rule]
+        self.template_path = None  # type: Optional[str]
+        self.img2dcm_exe_additional_options = ["--no-checks"]
+        self.pdf2dcm_exe_additional_options = []
         self.dcm_send_ip = None
         self.dcm_send_port = None
-        self.keep_temp_files = False
-        self.output_dicom_xml_file = None
-        self.quit_after_xml_file_creation = False
-        self.output_template_file = None
-        self.output_dicom_pdf_file = None
-        self.output_dicom_images_dir = "."
-        self.create_dicom_from_images = True
-        self.img2dcm_exe_additional_options = ["--no-checks"]
-        self.skip_pdf_file_creation = False
-        self.rules = []  # type: List[Rule]
-        self.additional_paths = ["dcmtk-3.6.5-win64-dynamic/bin", "poppler-20.11.0/bin"]  # type List[str]
+        self.dcmsend_exe_additional_options = []
 
     def add_paths(self):
         for additional_path in self.additional_paths:
@@ -173,13 +170,13 @@ def run_cmd(*args, print_stdout=False, exit_on_error=True):
         stdout = sys.stdout
     else:
         stderr = subprocess.PIPE
-        stdout = subprocess.PIPE
+        stdout = stderr
 
     result = subprocess.run(args, stdout=stdout, stderr=stderr)
     if result.returncode != 0 and exit_on_error:
         quit(
             "cmd \"{}\" failed with code {} the following output: {}. aborting.".format(cmd, str(result.returncode),
-                                                                                        result.stderr))
+                                                                                        result.stdout))
     return result.stdout.decode("utf-8").strip() if result.stdout else None
 
 
@@ -209,15 +206,7 @@ def replace_in_text_file(in_file, data: Dict, out_file):
 
 def create_default_config():
     # create default config
-    rule = Rule()
-    rule.name = "$findings$"
-    rule.xpath_expressions.append(
-        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
-    rule.replacements["<BR>"] = "\n"
     config = Config()
-    config.template_path = "report09_template.docx"
-    config.output_dicom_pdf_file = "report09.pdf.dcm"
-    config.rules.append(rule)
     return config
 
 
@@ -286,20 +275,27 @@ def create_installer(log_level=logging.INFO, log_file=None):
     logger.info("copying additional files")
     base_dir = "../base"
 
-    shutil.copyfile(base_dir+"/report09.dcm", output_dir + "/report09.dcm")
-    shutil.copyfile(base_dir+"/report09_template.docx", output_dir + "/report09_template.docx")
-    shutil.copyfile(base_dir+"/report10.dcm", output_dir + "/report10.dcm")
-    shutil.copyfile(base_dir+"/report10_template.html", output_dir + "/report10_template.html")
+    shutil.copyfile(base_dir + "/report09.dcm", output_dir + "/report09.dcm")
+    shutil.copyfile(base_dir + "/report09_template.docx", output_dir + "/report09_template.docx")
+    shutil.copyfile(base_dir + "/report10.dcm", output_dir + "/report10.dcm")
+    shutil.copyfile(base_dir + "/report10_template.html", output_dir + "/report10_template.html")
     sample_config = create_default_config()
-    dump_config_to_file(base_dir+"/config.json", sample_config)
-    shutil.copyfile(base_dir+"/config.json", output_dir + "/config.json")
+    dump_config_to_file(base_dir + "/config.json", sample_config)
+    shutil.copyfile(base_dir + "/config.json", output_dir + "/config.json")
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
-    shutil.copytree(base_dir+"/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
-    shutil.copytree(base_dir+"/poppler-20.11.0", output_dir + "/poppler-20.11.0")
+    shutil.copytree(base_dir + "/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
+    shutil.copytree(base_dir + "/poppler-20.11.0", output_dir + "/poppler-20.11.0")
 
     os.chdir(output_dir)
     logger.info("creating test case files: report09")
     report09_config = create_default_config()
+    report09_config.template_path = "report09_template.docx"
+    report09_rule = Rule()
+    report09_rule.name = "$findings$"
+    report09_rule.xpath_expressions.append(
+        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+    report09_rule.replacements["<BR>"] = "\n"
+    report09_config.rules.append(report09_rule)
     dump_config_to_file("report09_config.json", report09_config)
     report09_batch = open(r'ReportGenerator_report09.bat', 'w+')
     report09_batch.write(app_name + '.exe report09.dcm report09_config.json --log_level 10\nCMD')
@@ -352,6 +348,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
 
     # files need to be deleted
     try:
+        # LOAD CONFIG AND SETUP
         with open(config_file) as json_file:
             data = json.load(json_file)
             config = Config.create_from_dict(data)
@@ -359,20 +356,21 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             if error_str:
                 quit(error_str)
         config.add_paths()
+        temp_dir_object = tempfile.TemporaryDirectory()
+        temp_dir = temp_dir_object.name if config.temp_dir is None else config.temp_dir
+        dcm_sr_filename = os.path.basename(os.path.splitext(dcm_sr_path)[0])
 
         # GENERATE XML FILE
-        if config.output_dicom_xml_file:
-            sr_xml_file = config.output_dicom_xml_file
-        else:
-            with tempfile.NamedTemporaryFile(suffix=".xml", delete=not config.keep_temp_files) as tmp_file:
-                sr_xml_file = tmp_file.name
+        sr_xml_file = os.path.join(temp_dir, dcm_sr_filename + ".xml")
         logger.info("converting DICOM SR {} to XML file {}".format(dcm_sr_path, sr_xml_file))
         run_cmd("dsr2xml", *config.dsr2xml_exe_additional_options, dcm_sr_path, sr_xml_file)
-        if config.quit_after_xml_file_creation:
-            logger.info("xml created. quit requested.")
+        if config.target == "xml":
+            sr_xml_file_output = os.path.join(config.output_dir, dcm_sr_filename + ".xml")
+            shutil.move(sr_xml_file, sr_xml_file_output)
+            logger.info("xml created in {}. quit requested.".format(sr_xml_file_output))
             sys.exit(0)
 
-        # EXTRACT AND CONCAT CONTENTS USING XPATH
+        # GENERATE TEMPLATE DATA: EXTRACT AND CONTENTS FROM XML USING XPATH
         logger.info("retrieving contents from XML file {}".format(sr_xml_file))
         root = ET.parse(sr_xml_file)
         template_data = {}
@@ -400,65 +398,56 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                         text = text.replace(search, replace)
 
             template_data[rule.name] = text
-            logger.debug("template_data: {}".format(str(template_data)))
+        logger.debug("template_data: {}".format(str(template_data)))
 
-        # LOAD TEMPLATE AND SET CONTENTS ON NAMED PLACEHOLDERS
-        _, file_extension = os.path.splitext(config.template_path)
-        template_is_word = file_extension == ".docx"
-        if config.output_template_file:
-            filled_template_file = config.output_template_file
-        else:
-            with tempfile.NamedTemporaryFile(suffix=".docx", delete=not config.keep_temp_files) as tmp_file:
-                filled_template_file = tmp_file.name
+        # GENERATE FILLED TEMPLATE: LOAD TEMPLATE AND SET CONTENTS ON NAMED PLACEHOLDERS
+        _, template_file_extension = os.path.splitext(config.template_path)
+        template_is_word = template_file_extension == ".docx"
+        filled_template_file = os.path.join(temp_dir, dcm_sr_filename + template_file_extension)
         logger.info("replacing contents from template docx file {} into {}".format(config.template_path,
                                                                                    filled_template_file))
         if template_is_word:
             replace_in_docx(config.template_path, template_data, filled_template_file)
         else:
             replace_in_text_file(config.template_path, template_data, filled_template_file)
+        if config.target == "template":
+            filled_template_file_output = os.path.join(config.output_dir, dcm_sr_filename + template_file_extension)
+            shutil.move(filled_template_file, filled_template_file_output)
+            logger.info("template created in {}. quit requested.".format(filled_template_file_output))
+            sys.exit(0)
 
         # CONVERT TO PDF
         images = None
         pdf_tmp_file = None
-        temp_dir = tempfile.TemporaryDirectory()
-        if not config.skip_pdf_file_creation:
-            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=not config.keep_temp_files) as tmp_file:
-                pdf_tmp_file = tmp_file.name
-            logger.info("converting file {} into pdf file {}".format(filled_template_file, pdf_tmp_file))
-            with suppress_stdout():
-                if template_is_word:
-                    doc2pdf(filled_template_file, pdf_tmp_file)
-                else:
-                    pdfkit.from_file(filled_template_file, pdf_tmp_file)
-            if config.create_dicom_from_images:
-                images = pdf2image.convert_from_path(pdf_tmp_file, paths_only=True, output_folder=temp_dir.name,
-                                                     fmt="jpg")
+        pdf_tmp_file = os.path.join(temp_dir, dcm_sr_filename + ".pdf")
+        logger.info("converting file {} into pdf file {}".format(filled_template_file, pdf_tmp_file))
+        with suppress_stdout():
+            if template_is_word:
+                doc2pdf(filled_template_file, pdf_tmp_file)
+            else:
+                pdfkit.from_file(filled_template_file, pdf_tmp_file)
 
         # CONVERT TO DICOM
         dcm_files = []
-        if images:
+        # GENERATE DICOM PDF
+        if config.target == "dcm_pdf":
+            # CONVERT TO DICOM PDF
+            dcm_pdf_tmp_file = os.path.join(config.output_dir, dcm_sr_filename + ".pdf.dcm")
+            logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
+            run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path,
+                    *config.pdf2dcm_exe_additional_options)
+            dcm_files.append(dcm_pdf_tmp_file)
+        # GENERATE DICOM IMAGE STUDY (DEFAULT TARGET)
+        else:
+            images = pdf2image.convert_from_path(pdf_tmp_file, paths_only=True, output_folder=temp_dir,
+                                                 fmt="jpg")
             for idx, image in enumerate(images):
                 # Do something here
-                if config.output_dicom_images_dir:
-                    dcm_file = os.path.join(config.output_dicom_images_dir,
-                                            os.path.splitext(dcm_sr_path)[0] + "_" + str(idx) + ".dcm")
-                else:
-                    with tempfile.NamedTemporaryFile(suffix=".dcm", delete=not config.keep_temp_files) as tmp_file:
-                        dcm_file = tmp_file.name
+                dcm_file = os.path.join(config.output_dir, dcm_sr_filename + "_image" + str(idx + 1) + ".dcm")
                 logger.info("converting image {} into DICOM file {}".format(image, dcm_file))
-                run_cmd("img2dcm", "--series-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
+                run_cmd("img2dcm", "--study-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
                         dcm_file, print_stdout=True)
                 dcm_files.append(dcm_file)
-        elif pdf_tmp_file:
-            # CONVERT TO DICOM PDF
-            if config.output_dicom_pdf_file:
-                dcm_pdf_tmp_file = config.output_dicom_pdf_file
-            else:
-                with tempfile.NamedTemporaryFile(suffix=".dcm", delete=not config.keep_temp_files) as tmp_file:
-                    dcm_pdf_tmp_file = tmp_file.name
-            logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
-            run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path)
-            dcm_files.append(dcm_pdf_tmp_file)
 
         # SEND TO DICOM NODE
         if len(dcm_files) > 0 and config.dcm_send_ip:
@@ -466,6 +455,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                 logger.info("sending file {} to dicom node".format(dcm_file))
                 # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
                 run_cmd("dcmsend", config.dcm_send_ip, config.dcm_send_port, dcm_file,
+                        *config.dcmsend_exe_additional_options,
                         print_stdout=False)
 
     except Exception as error:

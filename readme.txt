@@ -12,7 +12,10 @@ DICOM SR file
 					> open word file and replace placeholders with the concatenated text
 		> save word file
 		> convert word file to pdf
-		> convert pdf to dicom pdf file using series information from the DICOM SR file
+			> convert pdf to images
+			> convert images to DICOM study
+			or 
+			> convert pdf to dicom pdf file using series information from the DICOM SR file
 		> possibly send file using dcmsend
 		
 

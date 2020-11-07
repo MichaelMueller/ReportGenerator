@@ -1,36 +1,22 @@
 {
-    "template_path": "report09_template.docx",
+    "additional_paths": [
+        "dcmtk-3.6.5-win64-dynamic/bin",
+        "poppler-20.11.0/bin"
+    ],
+    "temp_dir": null,
     "dsr2xml_exe_additional_options": [
         "-Ee",
         "-Ec"
     ],
-    "dcm_send_ip": null,
-    "dcm_send_port": null,
-    "keep_temp_files": false,
-    "output_dicom_xml_file": null,
-    "quit_after_xml_file_creation": false,
-    "output_template_file": null,
-    "output_dicom_pdf_file": "report09.pdf.dcm",
-    "output_dicom_images_dir": ".",
-    "create_dicom_from_images": true,
+    "target": "dcm_images",
+    "output_dir": ".",
+    "rules": [],
+    "template_path": null,
     "img2dcm_exe_additional_options": [
         "--no-checks"
     ],
-    "skip_pdf_file_creation": false,
-    "rules": [
-        {
-            "name": "$findings$",
-            "concat_string": "\n",
-            "xpath_expressions": [
-                "/report/document/content/container/text[concept/meaning[contains(text(), \"Finding\")]]/value/text()"
-            ],
-            "replacements": {
-                "<BR>": "\n"
-            }
-        }
-    ],
-    "additional_paths": [
-        "dcmtk-3.6.5-win64-dynamic/bin",
-        "poppler-20.11.0/bin"
-    ]
+    "pdf2dcm_exe_additional_options": [],
+    "dcm_send_ip": null,
+    "dcm_send_port": null,
+    "dcmsend_exe_additional_options": []
 }
