@@ -80,6 +80,7 @@ class Config(DataObject):
         self.pdf2dcm_exe_additional_options = []
         self.dcm_send_ip = None
         self.dcm_send_port = None
+        self.dcm_send_dcm_sr = False
         self.dcmsend_exe_additional_options = []
 
     def add_paths(self):
@@ -204,11 +205,53 @@ def replace_in_text_file(in_file, data: Dict, out_file):
         file.write(file_data)
 
 
-def create_default_config():
+def create_default_config(target_dir):
     # create default config
     config = Config()
-    return config
+    dump_config_to_file(os.path.join(target_dir, "config.json"), config)
 
+
+def create_report09_config(target_dir):
+    report09_config = Config()
+    report09_config.template_path = "report09_template.docx"
+    report09_config.output_dir = "./output"
+    report09_rule = Rule()
+    report09_rule.name = "$findings$"
+    report09_rule.xpath_expressions.append(
+        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+    report09_rule.replacements["<BR>"] = "\n"
+    report09_config.rules.append(report09_rule)
+    dump_config_to_file(os.path.join(target_dir, "report09_config.json"), report09_config)
+
+
+def create_report10_config(target_dir):
+    report10_config = Config()
+    report10_config.template_path = "report10_template.html"
+    report10_config.target = "xml"
+    report10_config.output_dir = "./output"
+
+    report10_config.rules = []
+    report10_rule1 = Rule()
+    report10_rule1.name = "$findings$"
+    report10_rule1.concat_string = "<br>"
+    report10_rule1.xpath_expressions.append(
+        '/report/document/content/container/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
+    report10_config.rules.append(report10_rule1)
+
+    report10_rule2 = Rule()
+    report10_rule2.name = "$name$"
+    report10_rule2.concat_string = " "
+    report10_rule2.xpath_expressions.append("/report/patient/name/first/text()")
+    report10_rule2.xpath_expressions.append("/report/patient/name/last/text()")
+    report10_config.rules.append(report10_rule2)
+
+    dump_config_to_file(os.path.join(target_dir, "report10_config.json"), report10_config)
+
+
+def create_configs(target_dir):
+    create_default_config(target_dir)
+    create_report09_config(target_dir)
+    create_report10_config(target_dir)
 
 def dump_config_to_file(dump_file, config):
     data = config.to_dict()
@@ -216,14 +259,13 @@ def dump_config_to_file(dump_file, config):
         json.dump(data, out_file, indent=4)
 
 
-def dump_config(dump_file, log_level, log_file):
+def dump_config(log_level, log_file):
     # logging
     setup_logging(log_level, log_file)
     logger = logging.getLogger(__name__)
-    logger.info("dumping default config into {}".format(dump_file))
+    logger.info("dumping default and sample configs into base dir")
 
-    config = create_default_config()
-    dump_config_to_file(dump_file, config)
+    create_configs("../base")
 
 
 @contextmanager
@@ -279,52 +321,23 @@ def create_installer(log_level=logging.INFO, log_file=None):
     shutil.copyfile(base_dir + "/report09_template.docx", output_dir + "/report09_template.docx")
     shutil.copyfile(base_dir + "/report10.dcm", output_dir + "/report10.dcm")
     shutil.copyfile(base_dir + "/report10_template.html", output_dir + "/report10_template.html")
-    sample_config = create_default_config()
-    dump_config_to_file(base_dir + "/config.json", sample_config)
-    shutil.copyfile(base_dir + "/config.json", output_dir + "/config.json")
     shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
     shutil.copytree(base_dir + "/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
     shutil.copytree(base_dir + "/poppler-20.11.0", output_dir + "/poppler-20.11.0")
 
+    logger.info("creating all configs")
+    create_configs(base_dir)
+    shutil.copyfile(base_dir + "/config.json", output_dir + "/config.json")
+    shutil.copyfile(base_dir + "/report09_config.json", output_dir + "/report09_config.json")
+    shutil.copyfile(base_dir + "/report10_config.json", output_dir + "/report10_config.json")
+
     os.chdir(output_dir)
     logger.info("creating test case files: report09")
-    report09_config = create_default_config()
-    report09_config.template_path = "report09_template.docx"
-    report09_rule = Rule()
-    report09_rule.name = "$findings$"
-    report09_rule.xpath_expressions.append(
-        '/report/document/content/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
-    report09_rule.replacements["<BR>"] = "\n"
-    report09_config.rules.append(report09_rule)
-    dump_config_to_file("report09_config.json", report09_config)
     report09_batch = open(r'ReportGenerator_report09.bat', 'w+')
     report09_batch.write(app_name + '.exe report09.dcm report09_config.json --log_level 10\nCMD')
     report09_batch.close()
 
     logger.info("creating test case files: report10")
-    report10_config = create_default_config()
-    report10_config.output_dicom_pdf_file = "report10.pdf.dcm"
-    report10_config.output_template_file = "report10.html"
-    report10_config.template_path = "report10_template.html"
-    report10_config.skip_pdf_file_creation = True
-    report10_config.output_dicom_xml_file = "report10.xml"
-
-    report10_config.rules = []
-    report10_rule1 = Rule()
-    report10_rule1.name = "$findings$"
-    report10_rule1.concat_string = "<br>"
-    report10_rule1.xpath_expressions.append(
-        '/report/document/content/container/container/text[concept/meaning[contains(text(), "Finding")]]/value/text()')
-    report10_config.rules.append(report10_rule1)
-
-    report10_rule2 = Rule()
-    report10_rule2.name = "$name$"
-    report10_rule2.concat_string = " "
-    report10_rule2.xpath_expressions.append("/report/patient/name/first/text()")
-    report10_rule2.xpath_expressions.append("/report/patient/name/last/text()")
-    report10_config.rules.append(report10_rule2)
-
-    dump_config_to_file("report10_config.json", report10_config)
     report10_batch = open(r'ReportGenerator_report10.bat', 'w+')
     report10_batch.write(app_name + '.exe report10.dcm report10_config.json --log_level 10\nCMD')
     report10_batch.close()
@@ -359,6 +372,8 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         temp_dir_object = tempfile.TemporaryDirectory()
         temp_dir = temp_dir_object.name if config.temp_dir is None else config.temp_dir
         dcm_sr_filename = os.path.basename(os.path.splitext(dcm_sr_path)[0])
+        if not os.path.exists(config.output_dir):
+            os.makedirs(config.output_dir)
 
         # GENERATE XML FILE
         sr_xml_file = os.path.join(temp_dir, dcm_sr_filename + ".xml")
@@ -441,16 +456,18 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         else:
             images = pdf2image.convert_from_path(pdf_tmp_file, paths_only=True, output_folder=temp_dir,
                                                  fmt="jpg")
-            for idx, image in enumerate(images):
+            for idx, image in enumerate(reversed(images)):
                 # Do something here
                 dcm_file = os.path.join(config.output_dir, dcm_sr_filename + "_image" + str(idx + 1) + ".dcm")
                 logger.info("converting image {} into DICOM file {}".format(image, dcm_file))
-                run_cmd("img2dcm", "--study-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
+                run_cmd("img2dcm", "--dataset-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
                         dcm_file, print_stdout=True)
                 dcm_files.append(dcm_file)
 
         # SEND TO DICOM NODE
         if len(dcm_files) > 0 and config.dcm_send_ip:
+            if config.dcm_send_dcm_sr:
+                dcm_files.append(dcm_sr_path)
             for dcm_file in dcm_files:
                 logger.info("sending file {} to dicom node".format(dcm_file))
                 # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
