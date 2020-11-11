@@ -298,6 +298,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     logger.info("running git commands".format())
     run_cmd("git", "add", "-A", print_stdout=True, exit_on_error=False)
     run_cmd("git", "commit", "-m", "'installer commit'", print_stdout=True, exit_on_error=False)
+    run_cmd("git", "push", print_stdout=True, exit_on_error=False)
     rev_hash = run_cmd('git', 'rev-parse', 'HEAD', print_stdout=False)
     logger.info("current git hash is {}".format(rev_hash))
 
@@ -433,7 +434,6 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
 
         # CONVERT TO PDF
         images = None
-        pdf_tmp_file = None
         pdf_tmp_file = os.path.join(temp_dir, dcm_sr_filename + ".pdf")
         logger.info("converting file {} into pdf file {}".format(filled_template_file, pdf_tmp_file))
         with suppress_stdout():
