@@ -215,7 +215,7 @@ def create_report09_config(target_dir):
     report09_config = Config()
     report09_config.template_path = "report09_template.docx"
     report09_config.output_dir = "./output"
-    config.output_dir.temp_dir = "./output"
+    report09_config.temp_dir = "./output"
     report09_rule = Rule()
     report09_rule.name = "$findings$"
     report09_rule.xpath_expressions.append(
