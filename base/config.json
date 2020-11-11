@@ -9,7 +9,7 @@
         "-Ec"
     ],
     "target": "dcm_images",
-    "output_dir": ".",
+    "output_dir": null,
     "rules": [],
     "template_path": null,
     "img2dcm_exe_additional_options": [

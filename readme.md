@@ -23,7 +23,7 @@ DICOM SR file
 These are the config options with default values and description (sorted by importance descending):
 
     "target": "dcm_images",                         // the output that should be generated: one of "xml" (generate only xml), "template", "dcm_pdf", "dcm_images"
-    "output_dir": "./output",                       // where target output files will be written
+    "output_dir": null,                             // a directory where temporary files are written, if set to null a temp dir will be used.set this to a known path to keep output files, e.g. when you need to import files from that location
     "temp_dir": null,                               // a directory where temporary files are written, if set to null a temp dir will be used. set this to a known path to keep intermediate files, e.g. for debugging   
     "additional_paths": 
         [ "dcmtk-3.6.5-win64-dynamic/bin",

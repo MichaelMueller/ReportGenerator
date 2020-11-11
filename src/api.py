@@ -73,7 +73,7 @@ class Config(DataObject):
         self.temp_dir = None
         self.dsr2xml_exe_additional_options = ["-Ee", "-Ec"]  # type: Optional[List[str]]
         self.target = "dcm_images"  # one of "xml", "template", "dcm_pdf", "dcm_images"
-        self.output_dir = "."
+        self.output_dir = None
         self.rules = []  # type: List[Rule]
         self.template_path = None  # type: Optional[str]
         self.img2dcm_exe_additional_options = ["--no-checks"]
@@ -124,8 +124,8 @@ def doc2pdf(doc_name, pdf_name):
     word = client.DispatchEx("Word.Application")
     if os.path.exists(pdf_name):
         os.remove(pdf_name)
-    worddoc = word.Documents.Open(doc_name, ReadOnly=1)
-    worddoc.SaveAs(pdf_name, FileFormat=17)
+    worddoc = word.Documents.Open(os.path.realpath(doc_name), ReadOnly=1)
+    worddoc.SaveAs(os.path.realpath(pdf_name), FileFormat=17)
     worddoc.Close()
     # return pdf_name
 
@@ -215,6 +215,7 @@ def create_report09_config(target_dir):
     report09_config = Config()
     report09_config.template_path = "report09_template.docx"
     report09_config.output_dir = "./output"
+    config.output_dir.temp_dir = "./output"
     report09_rule = Rule()
     report09_rule.name = "$findings$"
     report09_rule.xpath_expressions.append(
@@ -229,6 +230,7 @@ def create_report10_config(target_dir):
     report10_config.template_path = "report10_template.html"
     report10_config.target = "xml"
     report10_config.output_dir = "./output"
+    report10_config.temp_dir = "./output"
 
     report10_config.rules = []
     report10_rule1 = Rule()
@@ -373,15 +375,16 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         temp_dir_object = tempfile.TemporaryDirectory()
         temp_dir = temp_dir_object.name if config.temp_dir is None else config.temp_dir
         dcm_sr_filename = os.path.basename(os.path.splitext(dcm_sr_path)[0])
-        if not os.path.exists(config.output_dir):
-            os.makedirs(config.output_dir)
+        output_dir = temp_dir_object.name if config.output_dir is None else config.output_dir
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
         # GENERATE XML FILE
         sr_xml_file = os.path.join(temp_dir, dcm_sr_filename + ".xml")
         logger.info("converting DICOM SR {} to XML file {}".format(dcm_sr_path, sr_xml_file))
         run_cmd("dsr2xml", *config.dsr2xml_exe_additional_options, dcm_sr_path, sr_xml_file)
         if config.target == "xml":
-            sr_xml_file_output = os.path.join(config.output_dir, dcm_sr_filename + ".xml")
+            sr_xml_file_output = os.path.join(output_dir, dcm_sr_filename + ".xml")
             shutil.move(sr_xml_file, sr_xml_file_output)
             logger.info("xml created in {}. quit requested.".format(sr_xml_file_output))
             sys.exit(0)
@@ -427,7 +430,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         else:
             replace_in_text_file(config.template_path, template_data, filled_template_file)
         if config.target == "template":
-            filled_template_file_output = os.path.join(config.output_dir, dcm_sr_filename + template_file_extension)
+            filled_template_file_output = os.path.join(output_dir, dcm_sr_filename + template_file_extension)
             shutil.move(filled_template_file, filled_template_file_output)
             logger.info("template created in {}. quit requested.".format(filled_template_file_output))
             sys.exit(0)
@@ -447,7 +450,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         # GENERATE DICOM PDF
         if config.target == "dcm_pdf":
             # CONVERT TO DICOM PDF
-            dcm_pdf_tmp_file = os.path.join(config.output_dir, dcm_sr_filename + ".pdf.dcm")
+            dcm_pdf_tmp_file = os.path.join(output_dir, dcm_sr_filename + ".pdf.dcm")
             logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
             run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path,
                     *config.pdf2dcm_exe_additional_options)
@@ -458,7 +461,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                                                  fmt="jpg")
             for idx, image in enumerate(images):
                 # Do something here
-                dcm_file = os.path.join(config.output_dir, dcm_sr_filename + "_image" + str(idx + 1) + ".dcm")
+                dcm_file = os.path.join(output_dir, dcm_sr_filename + "_image" + str(idx + 1) + ".dcm")
                 logger.info("converting image {} into DICOM file {}".format(image, dcm_file))
                 run_cmd("img2dcm", "--series-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
                         dcm_file, print_stdout=True)
