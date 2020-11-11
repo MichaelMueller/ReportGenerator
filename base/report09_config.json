@@ -9,7 +9,7 @@
         "-Ec"
     ],
     "target": "dcm_images",
-    "output_dir": null,
+    "output_dir": "./output",
     "rules": [
         {
             "name": "$findings$",
@@ -27,8 +27,8 @@
         "--no-checks"
     ],
     "pdf2dcm_exe_additional_options": [],
-    "dcm_send_ip": "localhost",
-    "dcm_send_port": 2727,
+    "dcm_send_ip": null,
+    "dcm_send_port": null,
     "dcm_send_dcm_sr": false,
     "dcmsend_exe_additional_options": []
 }
