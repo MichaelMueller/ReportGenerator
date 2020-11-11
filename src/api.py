@@ -321,7 +321,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     shutil.copyfile(base_dir + "/report09_template.docx", output_dir + "/report09_template.docx")
     shutil.copyfile(base_dir + "/report10.dcm", output_dir + "/report10.dcm")
     shutil.copyfile(base_dir + "/report10_template.html", output_dir + "/report10_template.html")
-    shutil.copyfile("../readme.txt", output_dir + "/readme.txt")
+    shutil.copyfile("../readme.md", output_dir + "/readme.md")
     shutil.copytree(base_dir + "/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
     shutil.copytree(base_dir + "/poppler-20.11.0", output_dir + "/poppler-20.11.0")
 
@@ -456,11 +456,11 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         else:
             images = pdf2image.convert_from_path(pdf_tmp_file, paths_only=True, output_folder=temp_dir,
                                                  fmt="jpg")
-            for idx, image in enumerate(reversed(images)):
+            for idx, image in enumerate(images):
                 # Do something here
                 dcm_file = os.path.join(config.output_dir, dcm_sr_filename + "_image" + str(idx + 1) + ".dcm")
                 logger.info("converting image {} into DICOM file {}".format(image, dcm_file))
-                run_cmd("img2dcm", "--dataset-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
+                run_cmd("img2dcm", "--series-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
                         dcm_file, print_stdout=True)
                 dcm_files.append(dcm_file)
 
@@ -471,7 +471,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             for dcm_file in dcm_files:
                 logger.info("sending file {} to dicom node".format(dcm_file))
                 # run_cmd("dcmsend", "localhost", "2727", dcm_sr_path)
-                run_cmd("dcmsend", config.dcm_send_ip, config.dcm_send_port, dcm_file,
+                run_cmd("dcmsend", config.dcm_send_ip, str(config.dcm_send_port), dcm_file,
                         *config.dcmsend_exe_additional_options,
                         print_stdout=False)
 
