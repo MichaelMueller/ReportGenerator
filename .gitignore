@@ -1,6 +1,7 @@
 .idea
 build
 base/output
+var
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
