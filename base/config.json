@@ -19,5 +19,6 @@
     "dcm_send_ip": null,
     "dcm_send_port": null,
     "dcm_send_dcm_sr": false,
-    "dcmsend_exe_additional_options": []
+    "dcmsend_exe_additional_options": [],
+    "oid_root": null
 }
