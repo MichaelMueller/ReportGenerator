@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 from zipfile import ZipFile
 
 import pdfkit
@@ -17,6 +18,8 @@ from typing import List, Optional, Dict
 # import docx2pdf
 import lxml.etree as ET
 from docx import Document
+
+import hashlib
 
 
 class DataObject:
@@ -82,6 +85,7 @@ class Config(DataObject):
         self.dcm_send_port = None
         self.dcm_send_dcm_sr = False
         self.dcmsend_exe_additional_options = []
+        self.oid_root = None
 
     def add_paths(self):
         for additional_path in self.additional_paths:
@@ -113,6 +117,33 @@ class Config(DataObject):
         for idx, rule in enumerate(data["rules"]):
             data["rules"][idx] = rule.to_dict()
         return data
+
+
+def sha256sum(filename):
+    h = hashlib.sha256()
+    b = bytearray(128 * 1024)
+    mv = memoryview(b)
+    with open(filename, 'rb', buffering=0) as f:
+        for n in iter(lambda: f.readinto(mv), 0):
+            h.update(mv[:n])
+    return h.hexdigest()
+
+
+def generate_dcm_uid(oid_root, unique_string, max_length=56):
+    logger = logging.getLogger(__name__)
+    dcm_uid = ""
+    unique_string = unique_string if unique_string else str(uuid.uuid4())
+
+    i = 0
+    while len(dcm_uid) < max_length:
+        if i >= len(unique_string):
+            i = 0
+        dcm_uid = dcm_uid + str(ord(unique_string[i]))
+        i = i + 1
+    dcm_uid = (oid_root + "." if oid_root else "1.2.840.99999.3.1.") + dcm_uid
+    dcm_uid = dcm_uid[0:max_length]
+    logger.debug("generated dicom uid: {}".format(dcm_uid))
+    return dcm_uid
 
 
 def doc2pdf(doc_name, pdf_name):
@@ -254,6 +285,7 @@ def create_configs(target_dir):
     create_default_config(target_dir)
     create_report09_config(target_dir)
     create_report10_config(target_dir)
+
 
 def dump_config_to_file(dump_file, config):
     data = config.to_dict()
@@ -451,9 +483,10 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         if config.target == "dcm_pdf":
             # CONVERT TO DICOM PDF
             dcm_pdf_tmp_file = os.path.join(output_dir, dcm_sr_filename + ".pdf.dcm")
+            sop_instance_uid = generate_dcm_uid(config.oid_root, sha256sum(dcm_sr_path))
             logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
             run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path,
-                    *config.pdf2dcm_exe_additional_options)
+                    *config.pdf2dcm_exe_additional_options, "--key", "0008,0018={}".format(sop_instance_uid))
             dcm_files.append(dcm_pdf_tmp_file)
         # GENERATE DICOM IMAGE STUDY (DEFAULT TARGET)
         else:
@@ -463,8 +496,11 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                 # Do something here
                 dcm_file = os.path.join(output_dir, dcm_sr_filename + "_image" + str(idx + 1) + ".dcm")
                 logger.info("converting image {} into DICOM file {}".format(image, dcm_file))
+                sop_instance_uid = generate_dcm_uid(config.oid_root, sha256sum(image))
+
                 run_cmd("img2dcm", "--series-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
-                        dcm_file, print_stdout=True)
+                        dcm_file, "--key", "0008,0060=OT", "--key", "0020,0013={}".format(idx + 1), "--key",
+                        "0020,0013={}".format(idx + 1), "--key", "0008,0018={}".format(sop_instance_uid), print_stdout=True)
                 dcm_files.append(dcm_file)
 
         # SEND TO DICOM NODE

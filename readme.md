@@ -41,6 +41,7 @@ These are the config options with default values and description (sorted by impo
             }
         }
     ],
+    "oid_root": null,                               // The organization root for generating DICOM UIDs, see: http://dicom.nema.org/dicom/2013/output/chtml/part05/chapter_9.html, if none some random will be used
     "dsr2xml_exe_additional_options": [
         "-Ee",
         "-Ec"
