@@ -72,7 +72,7 @@ class Config(DataObject):
 
     def __init__(self):
         super().__init__()
-        self.additional_paths = ["dcmtk-3.6.5-win64-dynamic/bin", "poppler-20.11.0/bin"]  # type List[str]
+        self.additional_paths = ["dcmtk-3.6.5-win64-dynamic/bin", "poppler-20.11.0/bin", "wkhtmltox-0.12.6-1.mxe-cross-win64/wkhtmltox/bin"]  # type List[str]
         self.temp_dir = None
         self.dsr2xml_exe_additional_options = ["-Ee", "-Ec"]  # type: Optional[List[str]]
         self.target = "dcm_images"  # one of "xml", "template", "dcm_pdf", "dcm_images"
@@ -359,6 +359,7 @@ def create_installer(log_level=logging.INFO, log_file=None):
     shutil.copyfile("../readme.md", output_dir + "/readme.md")
     shutil.copytree(base_dir + "/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
     shutil.copytree(base_dir + "/poppler-20.11.0", output_dir + "/poppler-20.11.0")
+    shutil.copytree(base_dir + "/wkhtmltox-0.12.6-1.mxe-cross-win64", output_dir + "/wkhtmltox-0.12.6-1.mxe-cross-win64")
 
     logger.info("creating all configs")
     create_configs(base_dir)
