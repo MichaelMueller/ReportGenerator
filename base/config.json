@@ -1,7 +1,8 @@
 {
     "additional_paths": [
         "dcmtk-3.6.5-win64-dynamic/bin",
-        "poppler-20.11.0/bin"
+        "poppler-20.11.0/bin",
+        "wkhtmltox-0.12.6-1.mxe-cross-win64/wkhtmltox/bin"
     ],
     "temp_dir": null,
     "dsr2xml_exe_additional_options": [
