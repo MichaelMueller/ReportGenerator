@@ -224,7 +224,7 @@ def replace_in_docx(docx_path, data, output_docx_path):
 
 def replace_in_text_file(in_file, data: Dict, out_file):
     # Read in the file
-    with open(in_file, 'r') as file:
+    with open(in_file, mode='r') as file:
         file_data = file.read()
 
     # Replace the target string
@@ -232,7 +232,7 @@ def replace_in_text_file(in_file, data: Dict, out_file):
         file_data = file_data.replace(placeholder, new_text)
 
     # Write the file out again
-    with open(out_file, 'w') as file:
+    with open(out_file, 'w', errors='xmlcharrefreplace') as file:
         file.write(file_data)
 
 
