@@ -488,7 +488,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             if template_is_word:
                 doc2pdf(filled_template_file, pdf_tmp_file)
             else:
-                pdfkit.from_file(filled_template_file, pdf_tmp_file, configuration={"wkhtmltopdf": "wkhtmltopdf"})
+                pdfkit.from_file(filled_template_file, pdf_tmp_file, configuration=pdfkit.configuration({"wkhtmltopdf": "wkhtmltopdf"}))
         if config.target == "pdf":
             pdf_output_file_path = os.path.join(output_dir, output_file_name + ".pdf")
             shutil.move(pdf_tmp_file, pdf_output_file_path)

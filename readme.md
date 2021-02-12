@@ -22,12 +22,6 @@ DICOM SR file
 ## The config file
 These are the config options with default values and description (sorted by importance descending):
 
-    "target": "dcm_images",                         // OPTIONAL, the output that should be generated: one of "xml" (generate only xml), "template", "pdf", "dcm_pdf", "dcm_images"
-    "output_dir": null,                             // OPTIONAL, a directory where temporary files are written, if set to null a temp dir will be used.set this to a known path to keep output files, e.g. when you need to import files from that location
-    "temp_dir": null,                               // OPTIONAL, a directory where temporary files are written, if set to null a temp dir will be used. set this to a known path to keep intermediate files, e.g. for debugging   
-    "additional_paths": 
-        [ "dcmtk-3.6.5-win64-dynamic/bin",
-        "poppler-20.11.0/bin"] 						// additional system paths to be added upon running (should point to poppler and dcmtk directory)
     "template_path": "template.docx", 				// the path of the word or text template (any path without docx suffix will be treated as text file) 
     "rules": [ 										// there can be multiple rules: a rule is a set of instructions for text extraction and replacement
         {
@@ -41,17 +35,21 @@ These are the config options with default values and description (sorted by impo
             }
         }
     ],
-    "oid_root": null,                               // The organization root for generating DICOM UIDs, see: http://dicom.nema.org/dicom/2013/output/chtml/part05/chapter_9.html, if none some random will be used
+    "target": "dcm_images",                         // OPTIONAL, the output that should be generated: one of "xml" (generate only xml), "template", "pdf", "dcm_pdf", "dcm_images"
+    "output_dir": null,                             // OPTIONAL, a directory where temporary files are written, if set to null a temp dir will be used.set this to a known path to keep output files, e.g. when you need to import files from that location
+	"output_file_name": null						// OPTIONAL, the file name for output files (extension will be appended)
+    "temp_dir": null,                               // OPTIONAL, a directory where temporary files are written, if set to null a temp dir will be used. set this to a known path to keep intermediate files, e.g. for debugging   
+    "additional_paths": [] 							// OPTIONAL, additional system paths to be added upon running (should point to poppler and dcmtk directory)
+    "oid_root": null,                               // OPTIONAL, The organization root for generating DICOM UIDs, see: http://dicom.nema.org/dicom/2013/output/chtml/part05/chapter_9.html, if none some random will be used
     "dsr2xml_exe_additional_options": [
         "-Ee",
         "-Ec"
-    ], 						                        // additional options for the xml conversion, see https://support.dcmtk.org/docs/dsr2xml.html
-    "pdf2dcm_exe_additional_options": [], 	        // additional options for the pdf2dcm conversion, see https://support.dcmtk.org/docs/pdf2dcm.html
+    ], 						                        // OPTIONAL, additional options for the xml conversion, see https://support.dcmtk.org/docs/dsr2xml.html
+    "pdf2dcm_exe_additional_options": [], 	        // OPTIONAL, additional options for the pdf2dcm conversion, see https://support.dcmtk.org/docs/pdf2dcm.html
     "img2dcm_exe_additional_options": [
-        "--no-checks" ], 						    // additional options for the img2dcm conversion, see https://support.dcmtk.org/docs/img2dcm.html
-    "dcmsend_exe_additional_options": [],           // additional options for the dcmsend, see https://support.dcmtk.org/docs/dcmsend.html
-    "dcm_send_ip": null, 							// dcmsend ip destination, HINT: if this is null, no dcmsend command will be issued
-    "dcm_send_port": null,  						// dcmsend port
-    "dcm_send_dcm_sr": false,                       // whether to send the original SR report also,
-	"output_file_name": null						// the file name for output files (extension will be appended)
+        "--no-checks" ], 						    // OPTIONAL, additional options for the img2dcm conversion, see https://support.dcmtk.org/docs/img2dcm.html
+    "dcmsend_exe_additional_options": [],           // OPTIONAL, additional options for the dcmsend, see https://support.dcmtk.org/docs/dcmsend.html
+    "dcm_send_ip": null, 							// OPTIONAL, dcmsend ip destination, HINT: if this is null, no dcmsend command will be issued
+    "dcm_send_port": null,  						// REQUIRED ONLY IF dcm_send_ip != null, dcmsend port
+    "dcm_send_dcm_sr": false,                       // OPTIONAL, whether to send the original SR report also,
 
