@@ -7,7 +7,7 @@
     ],
     "target": "pdf",
     "output_dir": "./output",
-    "output_file_name": null,
+    "output_file_name": "report10_output",
     "rules": [
         {
             "name": "$findings$",
