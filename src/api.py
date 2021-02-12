@@ -72,11 +72,13 @@ class Config(DataObject):
 
     def __init__(self):
         super().__init__()
-        self.additional_paths = ["dcmtk-3.6.5-win64-dynamic/bin", "poppler-20.11.0/bin", "wkhtmltox-0.12.6-1.mxe-cross-win64/wkhtmltox/bin"]  # type List[str]
+        self.additional_paths = ["dcmtk-3.6.5-win64-dynamic/bin", "poppler-20.11.0/bin",
+                                 "wkhtmltox-0.12.6-1.mxe-cross-win64/wkhtmltox/bin"]  # type List[str]
         self.temp_dir = None
         self.dsr2xml_exe_additional_options = ["-Ee", "-Ec"]  # type: Optional[List[str]]
         self.target = "dcm_images"  # one of "xml", "template", "dcm_pdf", "dcm_images"
         self.output_dir = None
+        self.output_file_name = None
         self.rules = []  # type: List[Rule]
         self.template_path = None  # type: Optional[str]
         self.img2dcm_exe_additional_options = ["--no-checks"]
@@ -323,6 +325,14 @@ def zipdir(path, ziph):
             ziph.write(os.path.join(root, file))
 
 
+class CopyAllFilesFrom:
+    def __init__(self, source_dir):
+        self.source_dir = source_dir
+
+    def to(self, target_dir):
+        for file_name in os.listdir(self.source_dir):
+            shutil.copy(os.path.join(self.source_dir, file_name), os.path.join(target_dir, file_name))
+
 def create_installer(log_level=logging.INFO, log_file=None):
     # logging
     setup_logging(log_level, log_file)
@@ -357,9 +367,9 @@ def create_installer(log_level=logging.INFO, log_file=None):
     shutil.copyfile(base_dir + "/report10.dcm", output_dir + "/report10.dcm")
     shutil.copyfile(base_dir + "/report10_template.html", output_dir + "/report10_template.html")
     shutil.copyfile("../readme.md", output_dir + "/readme.md")
-    shutil.copytree(base_dir + "/dcmtk-3.6.5-win64-dynamic", output_dir + "/dcmtk-3.6.5-win64-dynamic")
-    shutil.copytree(base_dir + "/poppler-20.11.0", output_dir + "/poppler-20.11.0")
-    shutil.copytree(base_dir + "/wkhtmltox-0.12.6-1.mxe-cross-win64", output_dir + "/wkhtmltox-0.12.6-1.mxe-cross-win64")
+    CopyAllFilesFrom(base_dir + "/dcmtk-3.6.5-win64-dynamic/bin").to(output_dir)
+    CopyAllFilesFrom(base_dir + "/poppler-20.11.0/bin").to(output_dir)
+    CopyAllFilesFrom(base_dir + "/wkhtmltox-0.12.6-1.mxe-cross-win64/wkhtmltox/bin").to(output_dir)
 
     logger.info("creating all configs")
     create_configs(base_dir)
@@ -408,6 +418,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         temp_dir_object = tempfile.TemporaryDirectory()
         temp_dir = temp_dir_object.name if config.temp_dir is None else config.temp_dir
         dcm_sr_filename = os.path.basename(os.path.splitext(dcm_sr_path)[0])
+        output_file_name = config.output_file_name if config.output_file_name is not None else dcm_sr_filename
         output_dir = temp_dir_object.name if config.output_dir is None else config.output_dir
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
@@ -417,7 +428,7 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         logger.info("converting DICOM SR {} to XML file {}".format(dcm_sr_path, sr_xml_file))
         run_cmd("dsr2xml", *config.dsr2xml_exe_additional_options, dcm_sr_path, sr_xml_file)
         if config.target == "xml":
-            sr_xml_file_output = os.path.join(output_dir, dcm_sr_filename + ".xml")
+            sr_xml_file_output = os.path.join(output_dir, output_file_name + ".xml")
             shutil.move(sr_xml_file, sr_xml_file_output)
             logger.info("xml created in {}. quit requested.".format(sr_xml_file_output))
             sys.exit(0)
@@ -463,13 +474,12 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
         else:
             replace_in_text_file(config.template_path, template_data, filled_template_file)
         if config.target == "template":
-            filled_template_file_output = os.path.join(output_dir, dcm_sr_filename + template_file_extension)
+            filled_template_file_output = os.path.join(output_dir, output_file_name + template_file_extension)
             shutil.move(filled_template_file, filled_template_file_output)
             logger.info("template created in {}. quit requested.".format(filled_template_file_output))
             sys.exit(0)
 
         # CONVERT TO PDF
-        images = None
         pdf_tmp_file = os.path.join(temp_dir, dcm_sr_filename + ".pdf")
         logger.info("converting file {} into pdf file {}".format(filled_template_file, pdf_tmp_file))
         with suppress_stdout():
@@ -477,13 +487,18 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                 doc2pdf(filled_template_file, pdf_tmp_file)
             else:
                 pdfkit.from_file(filled_template_file, pdf_tmp_file)
+        if config.target == "pdf":
+            pdf_output_file_path = os.path.join(output_dir, output_file_name + ".pdf")
+            shutil.move(pdf_tmp_file, pdf_output_file_path)
+            logger.info("pdf file created in {}. quit requested.".format(pdf_output_file_path))
+            sys.exit(0)
 
         # CONVERT TO DICOM
         dcm_files = []
         # GENERATE DICOM PDF
         if config.target == "dcm_pdf":
             # CONVERT TO DICOM PDF
-            dcm_pdf_tmp_file = os.path.join(output_dir, dcm_sr_filename + ".pdf.dcm")
+            dcm_pdf_tmp_file = os.path.join(output_dir, output_file_name + ".pdf.dcm")
             sop_instance_uid = generate_dcm_uid(config.oid_root, sha256sum(dcm_sr_path))
             logger.info("converting file {} into DICOM pdf file {}".format(pdf_tmp_file, dcm_pdf_tmp_file))
             run_cmd("pdf2dcm", pdf_tmp_file, dcm_pdf_tmp_file, "--series-from", dcm_sr_path,
@@ -495,13 +510,14 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
                                                  fmt="jpg")
             for idx, image in enumerate(images):
                 # Do something here
-                dcm_file = os.path.join(output_dir, dcm_sr_filename + "_image" + str(idx + 1) + ".dcm")
+                dcm_file = os.path.join(output_dir, output_file_name + "_image" + str(idx + 1) + ".dcm")
                 logger.info("converting image {} into DICOM file {}".format(image, dcm_file))
                 sop_instance_uid = generate_dcm_uid(config.oid_root, sha256sum(image))
 
                 run_cmd("img2dcm", "--series-from", dcm_sr_path, *config.img2dcm_exe_additional_options, image,
                         dcm_file, "--key", "0008,0060=OT", "--key", "0020,0013={}".format(idx + 1), "--key",
-                        "0020,0013={}".format(idx + 1), "--key", "0008,0018={}".format(sop_instance_uid), print_stdout=True)
+                        "0020,0013={}".format(idx + 1), "--key", "0008,0018={}".format(sop_instance_uid),
+                        print_stdout=True)
                 dcm_files.append(dcm_file)
 
         # SEND TO DICOM NODE

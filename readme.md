@@ -22,9 +22,9 @@ DICOM SR file
 ## The config file
 These are the config options with default values and description (sorted by importance descending):
 
-    "target": "dcm_images",                         // the output that should be generated: one of "xml" (generate only xml), "template", "dcm_pdf", "dcm_images"
-    "output_dir": null,                             // a directory where temporary files are written, if set to null a temp dir will be used.set this to a known path to keep output files, e.g. when you need to import files from that location
-    "temp_dir": null,                               // a directory where temporary files are written, if set to null a temp dir will be used. set this to a known path to keep intermediate files, e.g. for debugging   
+    "target": "dcm_images",                         // OPTIONAL, the output that should be generated: one of "xml" (generate only xml), "template", "pdf", "dcm_pdf", "dcm_images"
+    "output_dir": null,                             // OPTIONAL, a directory where temporary files are written, if set to null a temp dir will be used.set this to a known path to keep output files, e.g. when you need to import files from that location
+    "temp_dir": null,                               // OPTIONAL, a directory where temporary files are written, if set to null a temp dir will be used. set this to a known path to keep intermediate files, e.g. for debugging   
     "additional_paths": 
         [ "dcmtk-3.6.5-win64-dynamic/bin",
         "poppler-20.11.0/bin"] 						// additional system paths to be added upon running (should point to poppler and dcmtk directory)
@@ -52,5 +52,6 @@ These are the config options with default values and description (sorted by impo
     "dcmsend_exe_additional_options": [],           // additional options for the dcmsend, see https://support.dcmtk.org/docs/dcmsend.html
     "dcm_send_ip": null, 							// dcmsend ip destination, HINT: if this is null, no dcmsend command will be issued
     "dcm_send_port": null,  						// dcmsend port
-    "dcm_send_dcm_sr": false                        // whether to send the original SR report also
+    "dcm_send_dcm_sr": false,                       // whether to send the original SR report also,
+	"output_file_name": null						// the file name for output files (extension will be appended)
 
