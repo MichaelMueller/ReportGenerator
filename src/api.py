@@ -91,8 +91,8 @@ class Config(DataObject):
     def add_paths(self):
         for additional_path in self.additional_paths:
             os.environ["PATH"] += os.pathsep + additional_path
-        logging.getLogger(__name__).debug("adding my own path {} to PATH".format(os.path.realpath(os.path.dirname(__file__))))
-        os.environ["PATH"] += os.pathsep + os.path.realpath(os.path.dirname(__file__))
+        logging.getLogger(__name__).debug("adding my own path {} to PATH".format(os.path.realpath(os.getcwd())))
+        os.environ["PATH"] += os.pathsep + os.path.realpath(os.getcwd())
 
     def validate(self):
         error = ""
