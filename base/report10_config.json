@@ -5,7 +5,7 @@
         "-Ee",
         "-Ec"
     ],
-    "target": "xml",
+    "target": "pdf",
     "output_dir": "./output",
     "output_file_name": null,
     "rules": [

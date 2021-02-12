@@ -263,6 +263,7 @@ def create_report10_config(target_dir):
     report10_config.target = "pdf"
     report10_config.output_dir = "./output"
     report10_config.temp_dir = "./output"
+    report10_config.output_file_name = "report10_output"
 
     report10_config.rules = []
     report10_rule1 = Rule()
