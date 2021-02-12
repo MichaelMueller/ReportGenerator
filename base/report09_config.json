@@ -11,6 +11,7 @@
     ],
     "target": "dcm_images",
     "output_dir": "./output",
+    "output_file_name": null,
     "rules": [
         {
             "name": "$findings$",

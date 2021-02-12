@@ -72,8 +72,7 @@ class Config(DataObject):
 
     def __init__(self):
         super().__init__()
-        self.additional_paths = ["dcmtk-3.6.5-win64-dynamic/bin", "poppler-20.11.0/bin",
-                                 "wkhtmltox-0.12.6-1.mxe-cross-win64/wkhtmltox/bin"]  # type List[str]
+        self.additional_paths = []  # type List[str]
         self.temp_dir = None
         self.dsr2xml_exe_additional_options = ["-Ee", "-Ec"]  # type: Optional[List[str]]
         self.target = "dcm_images"  # one of "xml", "template", "dcm_pdf", "dcm_images"

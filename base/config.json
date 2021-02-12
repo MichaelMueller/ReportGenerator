@@ -11,6 +11,7 @@
     ],
     "target": "dcm_images",
     "output_dir": null,
+    "output_file_name": null,
     "rules": [],
     "template_path": null,
     "img2dcm_exe_additional_options": [
