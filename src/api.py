@@ -260,7 +260,7 @@ def create_report09_config(target_dir):
 def create_report10_config(target_dir):
     report10_config = Config()
     report10_config.template_path = "report10_template.html"
-    report10_config.target = "xml"
+    report10_config.target = "pdf"
     report10_config.output_dir = "./output"
     report10_config.temp_dir = "./output"
 
