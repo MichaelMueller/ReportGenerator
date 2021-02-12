@@ -335,6 +335,7 @@ class CopyAllFilesFrom:
         for file_name in os.listdir(self.source_dir):
             shutil.copy(os.path.join(self.source_dir, file_name), os.path.join(target_dir, file_name))
 
+
 def create_installer(log_level=logging.INFO, log_file=None):
     # logging
     setup_logging(log_level, log_file)
@@ -488,7 +489,8 @@ def generate_report(dcm_sr_path, config_file, log_level, log_file):
             if template_is_word:
                 doc2pdf(filled_template_file, pdf_tmp_file)
             else:
-                pdfkit.from_file(filled_template_file, pdf_tmp_file, configuration=pdfkit.configuration({"wkhtmltopdf": "wkhtmltopdf"}))
+                pdfkit.from_file(filled_template_file, pdf_tmp_file,
+                                 configuration=pdfkit.pdfkit.Configuration(wkhtmltopdf="wkhtmltopdf"))
         if config.target == "pdf":
             pdf_output_file_path = os.path.join(output_dir, output_file_name + ".pdf")
             shutil.move(pdf_tmp_file, pdf_output_file_path)
